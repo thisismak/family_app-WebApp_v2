@@ -17,14 +17,20 @@ async function getUserById(id) {
 }
 
 async function registerUser(username, email, password) {
-  const [existing] = await query('SELECT * FROM users WHERE email = ?', [email]);
-  if (existing.length > 0) {
-    throw new Error('電郵地址已被使用');
+  try {
+    const results = await query('SELECT * FROM users WHERE email = ?', [email]);
+    const existing = Array.isArray(results) ? results : []; // 防護：確保 existing 是陣列
+    if (existing.length > 0) {
+      throw new Error('電郵地址已被使用');
+    }
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await query('INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)',
+      [username, email, hashedPassword, 'user']);
+    console.log('用戶註冊成功:', { username, email });
+  } catch (err) {
+    console.error('registerUser 錯誤:', { username, email, error: err.message });
+    throw err;
   }
-  const hashedPassword = await bcrypt.hash(password, 10);
-  await query('INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)',
-    [username, email, hashedPassword, 'user']);
-  console.log('用戶註冊成功:', { username, email });
 }
 
 async function loginUser(username, password) {
