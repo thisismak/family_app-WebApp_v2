@@ -133,12 +133,12 @@ body {
 }
 
 .navbar-brand, .nav-link {
-  color: var(--text-light) !important;
+  color: var(--dark-pink) !important; /* Changed to dark pink (#FF8A9B) */
   font-weight: 600;
 }
 
 .nav-link:hover {
-  color: var(--primary-pink) !important;
+  color: var(--primary-pink) !important; /* Keep light pink (#FFC1CC) for hover */
 }
 
 /* 家庭標誌（適用於首頁或儀表板） */
