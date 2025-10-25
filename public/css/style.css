@@ -257,3 +257,8 @@ body.offline .container {
   background: var(--text-light);
   color: var(--text-dark);
 }
+
+/* 輸入框區塊容器 */
+.input-group-container {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3); /* 明顯陰影 */
+}
