@@ -105,7 +105,7 @@
             const isImage = file.mime_type === 'image/jpeg' || file.mime_type === 'image/png';
             li.innerHTML = `
               <div>
-                ${isImage ? `<img src="/uploads/${file.filename}" alt="${file.custom_name || file.original_name}" class="thumbnail">` : ''}
+                ${isImage ? `<img src="/Uploads/${file.filename}" alt="${file.custom_name || file.original_name}" class="thumbnail">` : ''}
                 <a href="/Uploads/${file.filename}" target="_blank" class="text-info">${file.custom_name || file.original_name}</a>
                 <small class="d-block text-muted">原始檔案: ${file.original_name}</small>
                 <small class="d-block text-muted">描述: ${file.description || '無'}</small>
