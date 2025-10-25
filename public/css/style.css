@@ -1,0 +1,259 @@
+/* 引入 Poppins 字體，作為家庭友好風格的主要字體 */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+
+/* 定義主題變量，適應家庭網站的柔和粉色調 */
+:root {
+  --primary-pink: #FFC1CC; /* 柔和粉色，用於按鈕和高亮 */
+  --light-pink: #FFE4E1; /* 背景和卡片底色 */
+  --dark-pink: #FF8A9B; /* 工具列和重點強調 */
+  --text-dark: #333333; /* 主要文字顏色 */
+  --text-light: #FFFFFF; /* 深色背景上的文字 */
+  --shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* 柔和陰影 */
+  --family-font: 'Poppins', sans-serif; /* 家庭友好字體 */
+}
+
+/* 全局樣式 */
+body {
+  font-family: var(--family-font);
+  background: linear-gradient(135deg, var(--light-pink) 0%, #F8E6E9 50%, var(--light-pink) 100%); /* 柔和粉色漸層背景 */
+  color: var(--text-dark);
+  min-height: 100vh;
+  margin: 0;
+}
+
+/* 主容器，保留圓角和透明效果 */
+.container {
+  background: rgba(255, 255, 255, 0.9); /* 略透明的白色背景 */
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+  max-width: 800px; /* 適應家庭網站，增加寬度 */
+  margin: 20px auto;
+}
+
+/* 主要按鈕 */
+.btn-primary {
+  background: var(--primary-pink);
+  color: var(--text-dark);
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  text-transform: none;
+  padding: 10px 16px;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  background: var(--dark-pink);
+  color: var(--text-light);
+  box-shadow: var(--shadow);
+}
+
+/* 次要按鈕 */
+.btn-secondary {
+  background: #E0E0E0; /* 淺灰色，適應家庭風格 */
+  color: var(--text-dark);
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  text-transform: none;
+  padding: 10px 16px;
+  transition: all 0.3s ease;
+}
+
+.btn-secondary:hover {
+  background: var(--dark-pink);
+  color: var(--text-light);
+  box-shadow: var(--shadow);
+}
+
+/* 警告按鈕 */
+.btn-danger {
+  background: #FF6B6B; /* 柔和紅色，替代原有的 tomato */
+  color: var(--text-light);
+  border: none;
+  border-radius: 12px;
+  font-weight: 600;
+  text-transform: none;
+  transition: all 0.3s ease;
+}
+
+.btn-danger:hover {
+  background: #FF4040;
+  box-shadow: var(--shadow);
+}
+
+/* 資訊文字 */
+.text-info {
+  color: var(--dark-pink) !important; /* 使用深粉色作為強調色 */
+}
+
+/* 警告提示框 */
+.alert-danger {
+  background: rgba(255, 107, 107, 0.2); /* 柔和紅色背景 */
+  border: 1px solid #FF6B6B;
+  color: var(--text-dark);
+  border-radius: 8px;
+  padding: 15px;
+}
+
+/* 卡片樣式 */
+.card {
+  background: var(--text-light);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
+  transition: transform 0.3s ease;
+}
+
+.card:hover {
+  transform: translateY(-4px); /* 懸停時輕微上移 */
+}
+
+/* 表格樣式 */
+.table-dark {
+  background: rgba(255, 255, 255, 0.95); /* 接近白色，增加可讀性 */
+  color: var(--text-dark);
+  border-radius: 8px;
+}
+
+/* 模態框 */
+.modal-content.bg-dark {
+  background: var(--light-pink) !important; /* 使用淺粉色作為模態框背景 */
+  color: var(--text-dark);
+  border-radius: 12px;
+}
+
+/* 導航欄 */
+.navbar {
+  background: var(--dark-pink) !important; /* 深粉色導航欄 */
+  border-radius: 0 0 12px 12px;
+  box-shadow: var(--shadow);
+}
+
+.navbar-brand, .nav-link {
+  color: var(--text-light) !important;
+  font-weight: 600;
+}
+
+.nav-link:hover {
+  color: var(--primary-pink) !important;
+}
+
+/* 家庭標誌（適用於首頁或儀表板） */
+.family-logo {
+  display: block;
+  margin: 16px auto;
+  width: 100px;
+  height: auto;
+}
+
+/* 歡迎訊息區塊 */
+.welcome-message {
+  text-align: center;
+  padding: 24px;
+  background: linear-gradient(135deg, var(--primary-pink), var(--light-pink));
+  border-radius: 12px;
+  margin: 16px;
+  color: var(--text-dark);
+  box-shadow: var(--shadow);
+}
+
+/* 列表樣式 */
+.list-group-item {
+  background: var(--text-light);
+  color: var(--text-dark);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  margin-bottom: 8px;
+  transition: background 0.3s ease;
+}
+
+.list-group-item:hover {
+  background: var(--light-pink);
+}
+
+/* 表單元素 */
+.form-control {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.95);
+  color: var(--text-dark);
+}
+
+.form-control:focus {
+  border-color: var(--dark-pink);
+  box-shadow: 0 0 8px rgba(255, 138, 155, 0.5);
+}
+
+/* 響應式設計 */
+@media (max-width: 768px) {
+  .container {
+    padding: 15px;
+    max-width: 95%;
+  }
+
+  .btn-primary, .btn-secondary, .btn-danger {
+    padding: 8px 12px;
+    font-size: 14px;
+  }
+
+  .welcome-message {
+    padding: 16px;
+    margin: 10px;
+  }
+
+  .card {
+    max-width: 90%;
+  }
+
+  .navbar-brand, .nav-link {
+    font-size: 14px;
+  }
+
+  .family-logo {
+    width: 80px;
+  }
+}
+
+/* 適應日曆（FullCalendar） */
+.fc {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.fc .fc-daygrid-day {
+  background: var(--text-light);
+  border-radius: 8px;
+}
+
+.fc .fc-daygrid-day:hover {
+  background: var(--light-pink);
+}
+
+.fc .fc-event {
+  background: var(--primary-pink) !important;
+  border: 1px solid var(--dark-pink) !important;
+  color: var(--text-dark) !important;
+  border-radius: 8px;
+}
+
+/* 檔案管理縮略圖 */
+.thumbnail {
+  max-width: 50px;
+  max-height: 50px;
+  margin-right: 10px;
+  vertical-align: middle;
+  border-radius: 4px;
+}
+
+/* 確保 PWA 離線頁面樣式一致 */
+body.offline {
+  background: var(--light-pink);
+}
+
+body.offline .container {
+  background: var(--text-light);
+  color: var(--text-dark);
+}
