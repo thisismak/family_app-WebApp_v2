@@ -1,19 +1,19 @@
 {
-  "name": "技術人員內部網站",
-  "short_name": "技術網站",
-  "description": "一個專為技術人員設計的學習與管理平台",
+  "name": "我們的家庭空間",
+  "short_name": "家庭空間",
+  "description": "一個專為家庭成員設計的溫馨管理與分享平台，輕鬆管理任務、學習生字和分享檔案",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f0c29",
-  "theme_color": "#00bfff",
+  "background_color": "#FFE4E1",
+  "theme_color": "#FF8A9B",
   "icons": [
     {
-      "src": "/images/icon-192x192.png",
+      "src": "/images/family-logo-192x192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/images/icon-512x512.png",
+      "src": "/images/family-logo-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
