@@ -15,23 +15,23 @@
 </head>
 <body>
   <div class="container mt-5">
-    <h2 class="text-center text-white mb-4">任務管理</h2>
+    <h2 class="text-center mb-4">任務管理</h2>
     <form id="taskForm">
       <input type="hidden" id="taskId">
-      <div class="mb-3">
-        <label for="title" class="form-label text-white">任務標題</label>
+      <div class="mb-3 card p-4">
+        <label for="title" class="form-label text-info">任務標題</label>
         <input type="text" id="title" class="form-control" required>
       </div>
-      <div class="mb-3">
-        <label for="description" class="form-label text-white">任務描述</label>
+      <div class="mb-3 card p-4">
+        <label for="description" class="form-label text-info">任務描述</label>
         <textarea id="description" class="form-control" rows="3"></textarea>
       </div>
-      <div class="mb-3">
-        <label for="dueDate" class="form-label text-white">到期日期</label>
+      <div class="mb-3 card p-4">
+        <label for="dueDate" class="form-label text-info">到期日期</label>
         <input type="date" id="dueDate" class="form-control" required>
       </div>
-      <div class="mb-3">
-        <label for="dueTime" class="form-label text-white">到期時間</label>
+      <div class="mb-3 card p-4">
+        <label for="dueTime" class="form-label text-info">到期時間</label>
         <input type="time" id="dueTime" class="form-control" required>
       </div>
       <button type="button" onclick="saveTask()" class="btn btn-primary">儲存任務</button>
@@ -40,7 +40,7 @@
       <ul id="taskList" class="list-group"></ul>
     </div>
     <div class="mt-4">
-      <h2 class="text-center text-white">任務日曆</h2>
+      <h2 class="text-center mb-4">任務日曆</h2>
       <div id="calendar"></div>
     </div>
     <!-- 返回儀表板按鈕 -->
