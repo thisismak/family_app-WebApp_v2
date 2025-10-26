@@ -133,12 +133,12 @@ body {
 }
 
 .navbar-brand, .nav-link {
-  color: var(--text-light) !important;
+  color: var(--primary-pink) !important; /* 導航欄文字改為粉紅色 */
   font-weight: 600;
 }
 
 .nav-link:hover {
-  color: var(--primary-pink) !important;
+  color: var(--dark-pink) !important; /* 懸停時使用深粉色，與 .text-info 一致 */
 }
 
 /* 家庭標誌 */
