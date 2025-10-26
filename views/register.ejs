@@ -9,24 +9,27 @@
   <title>我們的家庭空間 - 註冊</title>
 </head>
 <body>
-  <div class="container mt-5">
-    <h2 class="text-center">我們的家庭空間 - 註冊</h2>
+  <div class="container mt-5 register">
+    <h2 class="text-center mb-5">我們的家庭空間 - 註冊</h2>
     <% if (error) { %>
       <div class="alert alert-danger" role="alert"><%= error %></div>
     <% } %>
-    <form action="/register" method="POST" class="mt-4">
+    <form action="/register" method="POST" class="card p-4 mb-4">
       <div class="mb-3">
-        <input type="text" name="username" class="form-control" placeholder="用戶名" required>
+        <label for="username" class="form-label text-info">用戶名</label>
+        <input type="text" id="username" name="username" class="form-control text-input" placeholder="輸入用戶名" required>
       </div>
       <div class="mb-3">
-        <input type="email" name="email" class="form-control" placeholder="電郵地址" required>
+        <label for="email" class="form-label text-info">電郵地址</label>
+        <input type="email" id="email" name="email" class="form-control text-input" placeholder="輸入電郵地址" required>
       </div>
       <div class="mb-3">
-        <input type="password" name="password" class="form-control" placeholder="密碼" required>
+        <label for="password" class="form-label text-info">密碼</label>
+        <input type="password" id="password" name="password" class="form-control text-input" placeholder="輸入密碼" required>
       </div>
       <button type="submit" class="btn btn-primary w-100">註冊</button>
     </form>
-    <div class="text-center mt-3">
+    <div class="text-center mt-4">
       <p>已有帳號？ <a href="/login" class="text-info">返回登入</a></p>
     </div>
   </div>

@@ -243,6 +243,17 @@ body {
   box-shadow: 0 0 12px rgba(255, 138, 155, 0.8);
 }
 
+/* 註冊頁面的文字輸入欄 */
+.register .text-input {
+  border: 2px solid var(--dark-pink);
+  box-shadow: 0 0 10px rgba(255, 138, 155, 0.7);
+}
+
+.register .text-input:focus {
+  border: 2px solid var(--dark-pink);
+  box-shadow: 0 0 12px rgba(255, 138, 155, 0.8);
+}
+
 /* 任務日曆 */
 .fc {
   max-width: 800px;
@@ -289,6 +300,12 @@ body {
 
 /* 登入頁面標題 */
 .login h2 {
+  font-weight: 600;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 註冊頁面標題 */
+.register h2 {
   font-weight: 600;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
@@ -353,7 +370,8 @@ body {
 
   .taskmanager .text-input,
   .filemanager .file-input,
-  .login .text-input {
+  .login .text-input,
+  .register .text-input {
     font-size: 0.9em;
   }
 }
