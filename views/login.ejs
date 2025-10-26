@@ -9,21 +9,23 @@
   <title>我們的家庭空間 - 登入</title>
 </head>
 <body>
-  <div class="container mt-5">
-    <h2 class="text-center">我們的家庭空間 - 登入</h2>
+  <div class="container mt-5 login">
+    <h2 class="text-center mb-5">我們的家庭空間 - 登入</h2>
     <% if (error) { %>
       <div class="alert alert-danger" role="alert"><%= error %></div>
     <% } %>
-    <form action="/login" method="POST" class="mt-4">
-      <div class="mb-3 input-group-container">
-        <input type="text" name="username" class="form-control" placeholder="用戶名" required>
+    <form action="/login" method="POST" class="card p-4 mb-4">
+      <div class="mb-3">
+        <label for="username" class="form-label text-info">用戶名</label>
+        <input type="text" id="username" name="username" class="form-control text-input" placeholder="輸入用戶名" required>
       </div>
-      <div class="mb-3 input-group-container">
-        <input type="password" name="password" class="form-control" placeholder="密碼" required>
+      <div class="mb-3">
+        <label for="password" class="form-label text-info">密碼</label>
+        <input type="password" id="password" name="password" class="form-control text-input" placeholder="輸入密碼" required>
       </div>
       <button type="submit" class="btn btn-primary w-100">登入</button>
     </form>
-    <div class="text-center mt-3">
+    <div class="text-center mt-4">
       <p>還沒有帳號？ <a href="/register" class="text-info">立即註冊</a></p>
     </div>
   </div>
