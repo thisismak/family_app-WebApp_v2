@@ -195,7 +195,7 @@ body {
 /* 針對 taskmanager 頁面的輸入欄 */
 .taskmanager .form-control {
   border: 1px solid var(--dark-pink); /* #FF8A9B，深粉色邊框 */
-  background: var(--light-pink); /* #FFE4E1，增強與 .card 的對比 */
+  background: var(--text-light); /* #FFFFFF，白色背景 */
   box-shadow: 0 0 8px rgba(255, 138, 155, 0.5); /* 粉紅色柔和發光陰影 */
 }
 
