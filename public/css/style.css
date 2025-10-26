@@ -15,20 +15,20 @@
 /* 全局樣式 */
 body {
   font-family: var(--family-font);
-  background: linear-gradient(135deg, var(--light-pink) 0%, #F8E6E9 50%, var(--light-pink) 100%); /* 柔和粉色漸層背景 */
+  background: linear-gradient(135deg, var(--light-pink) 0%, #F8E6E9 50%, var(--light-pink) 100%);
   color: var(--text-dark);
   min-height: 100vh;
   margin: 0;
 }
 
-/* 主容器，保留圓角和透明效果 */
+/* 主容器 */
 .container {
-  background: rgba(255, 255, 255, 0.9); /* 略透明的白色背景 */
+  background: rgba(255, 255, 255, 0.9);
   border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 12px;
   padding: 20px;
   box-shadow: var(--shadow);
-  max-width: 800px; /* 適應家庭網站，增加寬度 */
+  max-width: 800px;
   margin: 20px auto;
 }
 
@@ -52,7 +52,7 @@ body {
 
 /* 次要按鈕 */
 .btn-secondary {
-  background: #E0E0E0; /* 淺灰色，適應家庭風格 */
+  background: #E0E0E0;
   color: var(--text-dark);
   border: none;
   border-radius: 12px;
@@ -70,7 +70,7 @@ body {
 
 /* 警告按鈕 */
 .btn-danger {
-  background: #FF6B6B; /* 柔和紅色，替代原有的 tomato */
+  background: #FF6B6B;
   color: var(--text-light);
   border: none;
   border-radius: 12px;
@@ -86,12 +86,12 @@ body {
 
 /* 資訊文字 */
 .text-info {
-  color: var(--dark-pink) !important; /* 使用深粉色作為強調色 */
+  color: var(--dark-pink) !important;
 }
 
 /* 警告提示框 */
 .alert-danger {
-  background: rgba(255, 107, 107, 0.2); /* 柔和紅色背景 */
+  background: rgba(255, 107, 107, 0.2);
   border: 1px solid #FF6B6B;
   color: var(--text-dark);
   border-radius: 8px;
@@ -108,49 +108,40 @@ body {
 }
 
 .card:hover {
-  transform: translateY(-4px); /* 懸停時輕微上移 */
-}
-
-/* 禁用 taskmanager 頁面中 .card 的懸停效果 */
-.taskmanager .card {
-  transition: none;
-}
-
-.taskmanager .card:hover {
-  transform: none;
+  transform: translateY(-4px);
 }
 
 /* 表格樣式 */
 .table-dark {
-  background: rgba(255, 255, 255, 0.95); /* 接近白色，增加可讀性 */
+  background: rgba(255, 255, 255, 0.95);
   color: var(--text-dark);
   border-radius: 8px;
 }
 
 /* 模態框 */
 .modal-content.bg-dark {
-  background: var(--light-pink) !important; /* 使用淺粉色作為模態框背景 */
+  background: var(--light-pink) !important;
   color: var(--text-dark);
   border-radius: 12px;
 }
 
 /* 導航欄 */
 .navbar {
-  background: var(--dark-pink) !important; /* 深粉色導航欄 */
+  background: var(--dark-pink) !important;
   border-radius: 0 0 12px 12px;
   box-shadow: var(--shadow);
 }
 
 .navbar-brand, .nav-link {
-  color: var(--dark-pink) !important; /* Changed to dark pink (#FF8A9B) */
+  color: var(--dark-pink) !important;
   font-weight: 600;
 }
 
 .nav-link:hover {
-  color: var(--primary-pink) !important; /* Keep light pink (#FFC1CC) for hover */
+  color: var(--primary-pink) !important;
 }
 
-/* 家庭標誌（適用於首頁或儀表板） */
+/* 家庭標誌 */
 .family-logo {
   display: block;
   margin: 16px auto;
@@ -169,18 +160,21 @@ body {
   box-shadow: var(--shadow);
 }
 
-/* 列表樣式 */
+/* 任務列 */
 .list-group-item {
   background: var(--text-light);
   color: var(--text-dark);
   border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 8px;
+  border-radius: 12px;
+  padding: 1.5rem;
   margin-bottom: 8px;
-  transition: background 0.3s ease;
+  box-shadow: var(--shadow);
+  transition: transform 0.3s ease, background 0.3s ease;
 }
 
 .list-group-item:hover {
   background: var(--light-pink);
+  transform: translateY(-4px);
 }
 
 /* 表單元素 */
@@ -192,16 +186,53 @@ body {
   transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
 
-/* 針對 taskmanager 頁面的輸入欄 */
 .taskmanager .form-control {
-  border: 1px solid var(--dark-pink); /* #FF8A9B，深粉色邊框 */
-  background: var(--text-light); /* #FFFFFF，白色背景 */
-  box-shadow: 0 0 8px rgba(255, 138, 155, 0.5); /* 粉紅色柔和發光陰影 */
+  border: 1px solid var(--dark-pink);
+  background: var(--text-light);
+  box-shadow: 0 0 8px rgba(255, 138, 155, 0.5);
 }
 
 .form-control:focus {
-  border: 2px solid var(--dark-pink); /* #FF8A9B，更粗的邊框以區分焦點 */
-  box-shadow: 0 0 10px rgba(255, 138, 155, 0.7); /* 更強的粉紅色發光 */
+  border: 2px solid var(--dark-pink);
+  box-shadow: 0 0 10px rgba(255, 138, 155, 0.7);
+}
+
+/* 任務日曆 */
+.fc {
+  max-width: 800px;
+  margin: 0 auto;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: var(--shadow);
+}
+
+.fc .fc-daygrid-day {
+  background: var(--text-light);
+  border-radius: 8px;
+  transition: transform 0.3s ease, background 0.3s ease;
+}
+
+.fc .fc-daygrid-day:hover {
+  background: var(--light-pink);
+  transform: scale(1.02);
+  box-shadow: var(--shadow);
+}
+
+.fc .fc-event {
+  background: var(--primary-pink) !important;
+  border: 2px solid var(--dark-pink) !important;
+  color: var(--text-dark) !important;
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 4px 8px;
+}
+
+/* 任務管理標題 */
+.taskmanager h2 {
+  font-weight: 600;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* 響應式設計 */
@@ -232,28 +263,20 @@ body {
   .family-logo {
     width: 80px;
   }
-}
 
-/* 適應日曆（FullCalendar） */
-.fc {
-  max-width: 800px;
-  margin: 0 auto;
-}
+  .list-group-item {
+    padding: 1rem;
+  }
 
-.fc .fc-daygrid-day {
-  background: var(--text-light);
-  border-radius: 8px;
-}
+  .fc {
+    padding: 15px;
+    max-width: 95%;
+  }
 
-.fc .fc-daygrid-day:hover {
-  background: var(--light-pink);
-}
-
-.fc .fc-event {
-  background: var(--primary-pink) !important;
-  border: 1px solid var(--dark-pink) !important;
-  color: var(--text-dark) !important;
-  border-radius: 8px;
+  .fc .fc-event {
+    padding: 2px 4px;
+    font-size: 0.8em;
+  }
 }
 
 /* 檔案管理縮略圖 */
@@ -265,7 +288,7 @@ body {
   border-radius: 4px;
 }
 
-/* 確保 PWA 離線頁面樣式一致 */
+/* PWA 離線頁面 */
 body.offline {
   background: var(--light-pink);
 }
@@ -277,5 +300,5 @@ body.offline .container {
 
 /* 輸入框區塊容器 */
 .input-group-container {
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3); /* 明顯陰影 */
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
 }
