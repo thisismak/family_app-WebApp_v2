@@ -186,6 +186,29 @@ body {
   transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
 
+/* 任務管理頁面的輸入欄 */
+.taskmanager .form-control {
+  border: 1px solid var(--dark-pink);
+  background: var(--text-light);
+  box-shadow: 0 0 8px rgba(255, 138, 155, 0.5);
+}
+
+.taskmanager .form-control:focus {
+  border: 2px solid var(--dark-pink);
+  box-shadow: 0 0 10px rgba(255, 138, 155, 0.7);
+}
+
+/* 任務管理的文字輸入欄 */
+.taskmanager .text-input {
+  border: 2px solid var(--dark-pink);
+  box-shadow: 0 0 10px rgba(255, 138, 155, 0.7);
+}
+
+.taskmanager .text-input:focus {
+  border: 2px solid var(--dark-pink);
+  box-shadow: 0 0 12px rgba(255, 138, 155, 0.8);
+}
+
 /* 檔案管理頁面的輸入欄 */
 .filemanager .form-control {
   border: 1px solid var(--dark-pink);
@@ -198,7 +221,7 @@ body {
   box-shadow: 0 0 10px rgba(255, 138, 155, 0.7);
 }
 
-/* 文件輸入欄 */
+/* 檔案管理的文件輸入欄 */
 .filemanager .file-input {
   border: 2px solid var(--dark-pink);
   box-shadow: 0 0 10px rgba(255, 138, 155, 0.7);
@@ -206,7 +229,7 @@ body {
 
 .filemanager .file-input:focus {
   border: 2px solid var(--dark-pink);
-  box-shadow: 0 0 12px rgba(255, 138, 155, 0.8); /* 聚焦時增強陰影 */
+  box-shadow: 0 0 12px rgba(255, 138, 155, 0.8);
 }
 
 /* 任務日曆 */
@@ -311,8 +334,9 @@ body {
     max-height: 40px;
   }
 
+  .taskmanager .text-input,
   .filemanager .file-input {
-    font-size: 0.9em; /* 減小字體以適應小螢幕 */
+    font-size: 0.9em;
   }
 }
 
