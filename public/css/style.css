@@ -193,9 +193,20 @@ body {
   box-shadow: 0 0 8px rgba(255, 138, 155, 0.5);
 }
 
-.form-control:focus {
+.filemanager .form-control:focus {
   border: 2px solid var(--dark-pink);
   box-shadow: 0 0 10px rgba(255, 138, 155, 0.7);
+}
+
+/* 文件輸入欄 */
+.filemanager .file-input {
+  border: 2px solid var(--dark-pink);
+  box-shadow: 0 0 10px rgba(255, 138, 155, 0.7);
+}
+
+.filemanager .file-input:focus {
+  border: 2px solid var(--dark-pink);
+  box-shadow: 0 0 12px rgba(255, 138, 155, 0.8); /* 聚焦時增強陰影 */
 }
 
 /* 任務日曆 */
@@ -298,6 +309,10 @@ body {
   .thumbnail {
     max-width: 40px;
     max-height: 40px;
+  }
+
+  .filemanager .file-input {
+    font-size: 0.9em; /* 減小字體以適應小螢幕 */
   }
 }
 
