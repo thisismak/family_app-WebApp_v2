@@ -111,6 +111,15 @@ body {
   transform: translateY(-4px); /* 懸停時輕微上移 */
 }
 
+/* 禁用 taskmanager 頁面中 .card 的懸停效果 */
+.taskmanager .card {
+  transition: none;
+}
+
+.taskmanager .card:hover {
+  transform: none;
+}
+
 /* 表格樣式 */
 .table-dark {
   background: rgba(255, 255, 255, 0.95); /* 接近白色，增加可讀性 */
@@ -180,11 +189,19 @@ body {
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.95);
   color: var(--text-dark);
+  transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+/* 針對 taskmanager 頁面的輸入欄 */
+.taskmanager .form-control {
+  border: 1px solid var(--dark-pink); /* #FF8A9B，深粉色邊框 */
+  background: var(--light-pink); /* #FFE4E1，增強與 .card 的對比 */
+  box-shadow: 0 0 8px rgba(255, 138, 155, 0.5); /* 粉紅色柔和發光陰影 */
 }
 
 .form-control:focus {
-  border-color: var(--dark-pink);
-  box-shadow: 0 0 8px rgba(255, 138, 155, 0.5);
+  border: 2px solid var(--dark-pink); /* #FF8A9B，更粗的邊框以區分焦點 */
+  box-shadow: 0 0 10px rgba(255, 138, 155, 0.7); /* 更強的粉紅色發光 */
 }
 
 /* 響應式設計 */
