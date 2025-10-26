@@ -10,33 +10,25 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.45/moment-timezone-with-data.min.js"></script>
   <title>檔案管理</title>
-  <style>
-    .thumbnail {
-      max-width: 50px;
-      max-height: 50px;
-      margin-right: 10px;
-      vertical-align: middle;
-    }
-  </style>
 </head>
 <body>
   <div class="container mt-5">
-    <h2 class="text-center text-white mb-4">檔案管理</h2>
+    <h2 class="text-center mb-5">檔案管理</h2>
     
     <!-- 檔案上傳區域 -->
-    <div class="mb-4">
-      <h3 class="text-white">上傳檔案</h3>
+    <div class="card p-4 mb-4">
+      <h3 class="text-info">上傳檔案</h3>
       <form id="fileUploadForm" enctype="multipart/form-data">
         <div class="mb-3">
-          <label for="customName" class="form-label text-white">檔案名稱</label>
+          <label for="customName" class="form-label text-info">檔案名稱</label>
           <input type="text" id="customName" name="customName" class="form-control" placeholder="輸入自訂檔案名稱" required>
         </div>
         <div class="mb-3">
-          <label for="description" class="form-label text-white">檔案描述</label>
+          <label for="description" class="form-label text-info">檔案描述</label>
           <textarea id="description" name="description" class="form-control" placeholder="輸入檔案描述（可選）" rows="3"></textarea>
         </div>
         <div class="mb-3">
-          <label for="fileInput" class="form-label text-white">選擇檔案</label>
+          <label for="fileInput" class="form-label text-info">選擇檔案</label>
           <input type="file" id="fileInput" name="file" class="form-control" required>
         </div>
         <button type="submit" class="btn btn-primary w-100">上傳</button>
@@ -45,7 +37,7 @@
 
     <!-- 檔案列表區域 -->
     <div class="mt-4">
-      <h3 class="text-white">檔案列表</h3>
+      <h3 class="text-info">檔案列表</h3>
       <ul id="fileList" class="list-group"></ul>
     </div>
 
@@ -61,11 +53,11 @@
             <form id="editFileForm">
               <input type="hidden" id="editFilename">
               <div class="mb-3">
-                <label for="editCustomName" class="form-label">檔案名稱</label>
+                <label for="editCustomName" class="form-label text-info">檔案名稱</label>
                 <input type="text" id="editCustomName" class="form-control" required>
               </div>
               <div class="mb-3">
-                <label for="editDescription" class="form-label">檔案描述</label>
+                <label for="editDescription" class="form-label text-info">檔案描述</label>
                 <textarea id="editDescription" class="form-control" rows="3"></textarea>
               </div>
             </form>
@@ -78,7 +70,7 @@
       </div>
     </div>
 
-    <div class="text-center mt-3">
+    <div class="text-center mt-4">
       <a href="/dashboard" class="btn btn-secondary">返回儀表板</a>
     </div>
   </div>

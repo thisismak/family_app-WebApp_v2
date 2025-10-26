@@ -119,8 +119,8 @@ body {
 }
 
 /* 模態框 */
-.modal-content.bg-dark {
-  background: var(--light-pink) !important;
+.modal-content {
+  background: var(--light-pink);
   color: var(--text-dark);
   border-radius: 12px;
 }
@@ -133,7 +133,7 @@ body {
 }
 
 .navbar-brand, .nav-link {
-  color: var(--dark-pink) !important;
+  color: var(--text-light) !important;
   font-weight: 600;
 }
 
@@ -160,7 +160,7 @@ body {
   box-shadow: var(--shadow);
 }
 
-/* 任務列 */
+/* 列表樣式 */
 .list-group-item {
   background: var(--text-light);
   color: var(--text-dark);
@@ -186,7 +186,8 @@ body {
   transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
 }
 
-.taskmanager .form-control {
+/* 檔案管理頁面的輸入欄 */
+.filemanager .form-control {
   border: 1px solid var(--dark-pink);
   background: var(--text-light);
   box-shadow: 0 0 8px rgba(255, 138, 155, 0.5);
@@ -235,6 +236,22 @@ body {
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* 檔案管理標題 */
+.filemanager h2, .filemanager h3 {
+  font-weight: 600;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 檔案管理縮略圖 */
+.thumbnail {
+  max-width: 50px;
+  max-height: 50px;
+  margin-right: 10px;
+  vertical-align: middle;
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
 /* 響應式設計 */
 @media (max-width: 768px) {
   .container {
@@ -277,15 +294,11 @@ body {
     padding: 2px 4px;
     font-size: 0.8em;
   }
-}
 
-/* 檔案管理縮略圖 */
-.thumbnail {
-  max-width: 50px;
-  max-height: 50px;
-  margin-right: 10px;
-  vertical-align: middle;
-  border-radius: 4px;
+  .thumbnail {
+    max-width: 40px;
+    max-height: 40px;
+  }
 }
 
 /* PWA 離線頁面 */
