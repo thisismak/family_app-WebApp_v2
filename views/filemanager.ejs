@@ -99,7 +99,6 @@
               <div>
                 ${isImage ? `<img src="/uploads/${file.filename}" alt="${file.custom_name || file.original_name}" class="thumbnail">` : ''}
                 <a href="/uploads/${file.filename}" target="_blank" class="text-info">${file.custom_name || file.original_name}</a>
-                <small class="d-block text-muted">原始檔案: ${file.original_name}</small>
                 <small class="d-block text-muted">描述: ${file.description || '無'}</small>
                 <small class="d-block text-muted">上傳時間: ${formatDisplayDateTime(file.uploaded_at)}</small>
               </div>
