@@ -1,5 +1,6 @@
 -- 初始化資料庫結構和預設數據
 -- 適用於 internal_website 資料庫，確保與現有系統兼容
+-- 版本：家庭版 - 我們的家庭空間（2025-10-28 更新）
 
 -- 創建用戶表
 CREATE TABLE IF NOT EXISTS users (
@@ -108,22 +109,25 @@ CREATE TABLE IF NOT EXISTS site_settings (
   INDEX idx_key (setting_key)
 );
 
--- 初始化站點設定（家庭版）
-INSERT IGNORE INTO site_settings (setting_key, setting_value) VALUES
-('site_title', '家庭內部網站'),
+-- 初始化站點設定（我們的家庭空間 - 正式版）
+INSERT INTO site_settings (setting_key, setting_value) VALUES
+('site_title', '我們的家庭空間'),
 ('vapid_public_key', 'BCUBSpo6Y0Q8QUKduPAWXSwcvlElJbg5_PZDiXYJf1JC8sS3lCODMs_IiFDahD0LtlimMBqZj1G7lH61eVJMGeY'),
-('index_meta_description', '家庭內部網站，提供生字背默、任務管理、檔案管理與家庭筆記功能，協助家庭成員高效學習與生活。'),
-('index_meta_keywords', '家庭, 學習, 任務, 檔案, 筆記, PWA'),
-('index_og_title', '家庭內部網站 - 共享學習與生活平台'),
-('index_og_description', '專為家庭設計的內部工具，支持生字背默、任務提醒、檔案共享與家庭筆記，提升家庭效率。'),
-('login_meta_description', '登入家庭內部網站，管理您的學習與生活任務。'),
-('login_meta_keywords', '家庭, 登入, 任務管理'),
-('login_og_title', '家庭內部網站 - 登入'),
-('login_og_description', '登入家庭內部網站，開始管理您的任務與筆記。'),
-('register_meta_description', '註冊家庭內部網站，體驗高效的家庭管理工具。'),
+('index_meta_description', '一個專為家庭成員打造的溫馨平台，讓我們一起管理任務、學習生字、分享美好時刻！'),
+('index_meta_keywords', '家庭, 生字學習, 任務管理, 檔案分享, 筆記, PWA'),
+('index_og_title', '我們的家庭空間'),
+('index_og_description', '一個專為家庭成員打造的溫馨平台，讓我們一起管理任務、學習生字、分享美好時刻！'),
+('login_meta_description', '登入我們的家庭空間，開始管理任務與學習'),
+('login_meta_keywords', '家庭, 登入, 任務管理, 學習'),
+('login_og_title', '我們的家庭空間 - 登入'),
+('login_og_description', '登入家庭平台，管理任務、學習與分享'),
+('register_meta_description', '註冊我們的家庭空間，立即開始使用'),
 ('register_meta_keywords', '家庭, 註冊, 學習管理'),
-('register_og_title', '家庭內部網站 - 註冊'),
-('register_og_description', '立即註冊家庭內部網站，體驗高效的家庭管理工具。');
+('register_og_title', '我們的家庭空間 - 註冊'),
+('register_og_description', '立即註冊，體驗家庭專屬的管理與學習工具')
+ON DUPLICATE KEY UPDATE
+  setting_value = VALUES(setting_value),
+  updated_at = CURRENT_TIMESTAMP;
 
 -- 創建活動日誌表（包含 IP 和 User Agent）
 CREATE TABLE IF NOT EXISTS activity_logs (
