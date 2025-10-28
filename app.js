@@ -472,7 +472,7 @@ app.delete('/filemanager/delete/:filename', verifyToken, async (req, res) => {
   }
 });
 
-// ==================== 家庭筆記本（專業版）================
+// ==================== 筆記本（專業版）================
 
 // 載入筆記本 + 標籤
 app.get('/notebook', verifyToken, async (req, res) => {
