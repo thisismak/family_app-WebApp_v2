@@ -12,33 +12,50 @@ const wordService = require('./services/wordService');
 const taskService = require('./services/taskService');
 const subscriptionService = require('./services/subscriptionService');
 const fileService = require('./services/fileService');
+const noteService = require('./services/noteService'); // 新增：筆記服務
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs').promises;
 
 process.env.TZ = 'Asia/Hong_Kong';
 
 const app = express();
+const JWT_EXPIRES_IN = '7d';
 
-// 配置 Multer 檔案上傳
+// 快取站點設定
+let cachedSettings = null;
+let settingsLastLoaded = 0;
+const SETTINGS_CACHE_TTL = 5 * 60 * 1000; // 5分鐘
+
+// Multer 檔案上傳
 const storage = multer.diskStorage({
   destination: async (req, file, cb) => {
-    await fileService.ensureUploadDir();
-    cb(null, 'public/uploads/');
+    try {
+      await fileService.ensureUploadDir();
+      cb(null, 'public/uploads/');
+    } catch (err) {
+      cb(err);
+    }
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + '-' + file.originalname);
+    const ext = path.extname(file.originalname);
+    cb(null, uniqueSuffix + ext);
   }
 });
+
 const upload = multer({
   storage,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 限制檔案大小為 5MB
+  limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf', 'text/plain'];
+    const allowedTypes = [
+      'image/jpeg', 'image/jpg', 'image/png',
+      'application/pdf', 'text/plain', 'text/csv'
+    ];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('僅支援 JPEG、PNG、PDF 和純文本檔案'));
+      cb(new Error('僅支援 JPEG、PNG、PDF、TXT、CSV 檔案'));
     }
   }
 });
@@ -46,9 +63,16 @@ const upload = multer({
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 app.use(cookieParser());
-app.use(express.static('public'));
+app.use(express.static('public', {
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.xml')) {
+      res.setHeader('Content-Type', 'application/xml');
+    }
+  }
+}));
 app.set('view engine', 'ejs');
 
+// VAPID 設定
 webpush.setVapidDetails(
   'mailto:support@mysandshome.com',
   process.env.VAPID_PUBLIC_KEY,
@@ -56,66 +80,97 @@ webpush.setVapidDetails(
 );
 
 initializeDatabase().catch(err => {
-  console.error('Failed to initialize database:', err.message);
+  console.error('資料庫初始化失敗:', err.message);
   process.exit(1);
 });
 
-// 載入站點設定
-async function loadSiteSettings() {
+// 載入站點設定（快取）
+async function loadSiteSettings(force = false) {
+  const now = Date.now();
+  if (!force && cachedSettings && (now - settingsLastLoaded < SETTINGS_CACHE_TTL)) {
+    return cachedSettings;
+  }
+
   try {
     const results = await query('SELECT setting_key, setting_value FROM site_settings');
     const settings = {};
     results.forEach(row => {
       settings[row.setting_key] = row.setting_value;
     });
+    cachedSettings = settings;
+    settingsLastLoaded = now;
     return settings;
   } catch (err) {
     console.error('載入站點設定失敗:', err.message);
     return {
-      site_title: '技術人員內部網站',
-      index_meta_description: '技術人員內部網站，提供英文生字背默、任務管理和檔案管理功能，助力技術人員高效學習和工作。',
-      index_meta_keywords: '技術人員, 英文學習, 生字背默, 任務管理, 檔案管理, PWA應用',
-      index_og_title: '技術人員內部網站 - 高效學習與管理平台',
-      index_og_description: '專為技術人員設計的學習與管理工具，支持英文生字背默、任務管理和檔案管理，提升工作效率。',
-      login_meta_description: '登入技術人員內部網站，管理您的學習和工作任務。',
-      login_meta_keywords: '技術人員, 登入, 學習管理, 任務管理',
-      login_og_title: '技術人員內部網站 - 登入',
-      login_og_description: '登入技術人員內部網站，開始管理您的學習和工作任務。',
-      register_meta_description: '註冊技術人員內部網站，體驗高效的學習與管理工具。',
-      register_meta_keywords: '技術人員, 註冊, 學習管理, PWA應用',
-      register_og_title: '技術人員內部網站 - 註冊',
-      register_og_description: '立即註冊技術人員內部網站，體驗高效的學習與管理工具。'
+      site_title: '家庭內部網站',
+      vapid_public_key: process.env.VAPID_PUBLIC_KEY || '',
+      index_meta_description: '家庭內部網站，提供生字背默、任務管理、檔案管理與家庭筆記功能。',
+      index_meta_keywords: '家庭, 學習, 任務, 檔案, 筆記',
+      index_og_title: '家庭內部網站',
+      index_og_description: '家庭成員共享的學習與管理平台。',
+      login_meta_description: '登入家庭內部網站',
+      login_meta_keywords: '登入, 家庭',
+      login_og_title: '登入',
+      login_og_description: '登入您的帳戶',
+      register_meta_description: '註冊家庭帳戶',
+      register_meta_keywords: '註冊, 家庭',
+      register_og_title: '註冊',
+      register_og_description: '建立新帳戶'
     };
   }
 }
 
-// 管理員權限中間件
+// 管理員驗證
 const verifyAdmin = async (req, res, next) => {
   try {
     const user = await userService.getUserById(req.user.id);
     if (user.role !== 'admin') {
-      console.warn('非管理員嘗試訪問後台:', { userId: req.user.id });
+      await logActivity(req.user.id, '權限拒絕', `試圖訪問管理頁面: ${req.originalUrl}`, req);
       return res.status(403).json({ success: false, error: '無管理員權限' });
     }
     next();
   } catch (err) {
-    console.error('檢查管理員權限失敗:', err.message);
+    console.error('管理員驗證失敗:', err.message);
     res.redirect('/login');
   }
 };
 
-// 記錄日誌的輔助函數
-async function logActivity(userId, action, details) {
+// 活動日誌（容錯）
+async function logActivity(userId, action, details, req = null) {
   try {
-    await query('INSERT INTO activity_logs (user_id, action, details) VALUES (?, ?, ?)', 
-      [userId, action, details]);
-    console.log('活動日誌記錄:', { userId, action, details });
+    const ip = req?.headers['x-forwarded-for']?.split(',')[0]?.trim() || req?.ip || 'unknown';
+    const ua = req?.headers['user-agent'] || 'unknown';
+    await query(
+      'INSERT INTO activity_logs (user_id, action, details, ip_address, user_agent) VALUES (?, ?, ?, ?, ?)',
+      [userId || null, action, details, ip, ua]
+    );
   } catch (err) {
-    console.error('記錄日誌失敗:', err.message);
+    if (!err.message.includes('Unknown column')) {
+      console.error('日誌記錄失敗:', err.message);
+    }
+    // 不中斷流程
   }
 }
 
-// 公開頁面路由
+// JWT 驗證
+const verifyToken = async (req, res, next) => {
+  const token = req.cookies.token;
+  if (!token) return res.redirect('/login');
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: ['HS256'] });
+    req.user = decoded;
+    next();
+  } catch (err) {
+    console.warn('JWT 無效:', err.message);
+    res.clearCookie('token');
+    res.redirect('/login');
+  }
+};
+
+// ==================== 公開路由 ====================
+
 app.get('/', async (req, res) => {
   const settings = await loadSiteSettings();
   res.render('index', { siteSettings: settings });
@@ -131,7 +186,6 @@ app.get('/sitemap.xml', async (req, res) => {
     res.header('Content-Type', 'application/xml');
     res.render('sitemap', { settings });
   } catch (err) {
-    console.error('生成sitemap失敗:', err.message);
     res.status(500).send('生成網站地圖失敗');
   }
 });
@@ -145,7 +199,7 @@ app.post('/register', async (req, res) => {
   const { username, email, password } = req.body;
   try {
     await userService.registerUser(username, email, password);
-    await logActivity(null, '用戶註冊', `新用戶註冊: ${username} (${email})`);
+    await logActivity(null, '用戶註冊', `新用戶: ${username} (${email})`, req);
     res.redirect('/login');
   } catch (err) {
     const settings = await loadSiteSettings();
@@ -160,11 +214,15 @@ app.get('/login', async (req, res) => {
 
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
-  console.log('登入請求:', { username, password: '[隱藏]' });
   try {
     const token = await userService.loginUser(username, password);
-    res.cookie('token', token, { httpOnly: true });
-    await logActivity(null, '用戶登入', `用戶 ${username} 登入`);
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 7 * 24 * 60 * 60 * 1000
+    });
+    await logActivity(null, '用戶登入', `用戶 ${username} 登入`, req);
     res.redirect('/dashboard');
   } catch (err) {
     const settings = await loadSiteSettings();
@@ -172,250 +230,24 @@ app.post('/login', async (req, res) => {
   }
 });
 
-const verifyToken = async (req, res, next) => {
-  const token = req.cookies.token;
-  if (!token) {
-    console.warn('無 JWT 令牌，導向登入頁面');
-    return res.redirect('/login');
-  }
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (err) {
-    console.error('JWT Verification Error:', err.message);
-    res.redirect('/login');
-  }
-};
+// ==================== 登入後路由 ====================
 
-// 後台路由
-app.get('/admin', verifyToken, verifyAdmin, async (req, res) => {
-  try {
-    const user = await userService.getUserById(req.user.id);
-    await logActivity(req.user.id, '訪問後台儀表板', `用戶 ${user.username} 訪問了後台儀表板`);
-    res.render('admin/dashboard', { username: user.username });
-  } catch (err) {
-    console.error('載入後台儀表板失敗:', err.message);
-    res.status(500).json({ success: false, error: '載入儀表板失敗' });
-  }
-});
-
-app.get('/admin/users', verifyToken, verifyAdmin, async (req, res) => {
-  try {
-    const users = await userService.getAllUsers();
-    await logActivity(req.user.id, '查看用戶列表', '訪問了用戶管理頁面');
-    res.render('admin/users', { users });
-  } catch (err) {
-    console.error('載入用戶列表失敗:', err.message);
-    res.status(500).json({ success: false, error: '載入用戶列表失敗' });
-  }
-});
-
-app.put('/admin/users/:id', verifyToken, verifyAdmin, async (req, res) => {
-  const { username, email, role } = req.body;
-  try {
-    const result = await query(
-      'UPDATE users SET username = ?, email = ?, role = ? WHERE id = ?',
-      [username, email, role, req.params.id]
-    );
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ success: false, error: '用戶不存在' });
-    }
-    await logActivity(req.user.id, '編輯用戶', `編輯了用戶ID: ${req.params.id}`);
-    res.json({ success: true });
-  } catch (err) {
-    console.error('編輯用戶失敗:', err.message);
-    res.status(500).json({ success: false, error: '編輯用戶失敗' });
-  }
-});
-
-app.delete('/admin/users/:id', verifyToken, verifyAdmin, async (req, res) => {
-  try {
-    const result = await query('DELETE FROM users WHERE id = ?', [req.params.id]);
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ success: false, error: '用戶不存在' });
-    }
-    await logActivity(req.user.id, '刪除用戶', `刪除了用戶ID: ${req.params.id}`);
-    res.json({ success: true });
-  } catch (err) {
-    console.error('刪除用戶失敗:', err.message);
-    res.status(500).json({ success: false, error: '刪除用戶失敗' });
-  }
-});
-
-app.get('/admin/tasks', verifyToken, verifyAdmin, async (req, res) => {
-  try {
-    const tasks = await query(`
-      SELECT t.*, u.username 
-      FROM tasks t 
-      LEFT JOIN users u ON t.user_id = u.id
-    `);
-    await logActivity(req.user.id, '查看任務列表', '訪問了任務管理頁面');
-    res.render('admin/tasks', { tasks, moment });
-  } catch (err) {
-    console.error('載入任務列表失敗:', err.message);
-    res.status(500).json({ success: false, error: '載入任務列表失敗' });
-  }
-});
-
-app.delete('/admin/tasks/:id', verifyToken, verifyAdmin, async (req, res) => {
-  try {
-    const result = await query('DELETE FROM tasks WHERE id = ?', [req.params.id]);
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ success: false, error: '任務不存在' });
-    }
-    await logActivity(req.user.id, '刪除任務', `刪除了任務ID: ${req.params.id}`);
-    res.json({ success: true });
-  } catch (err) {
-    console.error('刪除任務失敗:', err.message);
-    res.status(500).json({ success: false, error: '刪除任務失敗' });
-  }
-});
-
-app.get('/admin/files', verifyToken, verifyAdmin, async (req, res) => {
-  try {
-    const files = await query(`
-      SELECT f.*, u.username 
-      FROM files f 
-      LEFT JOIN users u ON f.user_id = u.id
-    `);
-    await logActivity(req.user.id, '查看檔案列表', '訪問了檔案管理頁面');
-    res.render('admin/files', { files, moment });
-  } catch (err) {
-    console.error('載入檔案列表失敗:', err.message);
-    res.status(500).json({ success: false, error: '載入檔案列表失敗' });
-  }
-});
-
-app.delete('/admin/files/:filename', verifyToken, verifyAdmin, async (req, res) => {
-  try {
-    await fileService.deleteFile(null, req.params.filename);
-    await logActivity(req.user.id, '刪除檔案', `刪除了檔案: ${req.params.filename}`);
-    res.json({ success: true });
-  } catch (err) {
-    console.error('刪除檔案失敗:', err.message);
-    res.status(500).json({ success: false, error: '刪除檔案失敗' });
-  }
-});
-
-app.get('/admin/dictation', verifyToken, verifyAdmin, async (req, res) => {
-  try {
-    const wordlists = await query(`
-      SELECT w.*, u.username, COUNT(words.id) as word_count
-      FROM wordlists w
-      LEFT JOIN users u ON w.user_id = u.id
-      LEFT JOIN words ON w.id = words.wordlist_id
-      GROUP BY w.id
-    `);
-    await logActivity(req.user.id, '查看生字庫列表', '訪問了生字管理頁面');
-    res.render('admin/dictation', { wordlists });
-  } catch (err) {
-    console.error('載入生字庫列表失敗:', err.message);
-    res.status(500).json({ success: false, error: '載入生字庫列表失敗' });
-  }
-});
-
-app.get('/admin/dictation/words/:wordlistId', verifyToken, verifyAdmin, async (req, res) => {
-  try {
-    const words = await wordService.getWordsByWordlist(req.params.wordlistId);
-    res.json(words);
-  } catch (err) {
-    console.error('載入生字失敗:', err.message);
-    res.status(500).json({ success: false, error: '載入生字失敗' });
-  }
-});
-
-app.delete('/admin/dictation/:wordlistId', verifyToken, verifyAdmin, async (req, res) => {
-  try {
-    await wordlistService.deleteWordlist(null, req.params.wordlistId);
-    await logActivity(req.user.id, '刪除生字庫', `刪除了生字庫ID: ${req.params.wordlistId}`);
-    res.json({ success: true });
-  } catch (err) {
-    console.error('刪除生字庫失敗:', err.message);
-    res.status(500).json({ success: false, error: '刪除生字庫失敗' });
-  }
-});
-
-app.get('/admin/settings', verifyToken, verifyAdmin, async (req, res) => {
-  try {
-    const settings = await loadSiteSettings();
-    await logActivity(req.user.id, '查看系統設定', '訪問了系統設定頁面');
-    res.render('admin/settings', { settings });
-  } catch (err) {
-    console.error('載入系統設定失敗:', err.message);
-    res.status(500).json({ success: false, error: '載入系統設定失敗' });
-  }
-});
-
-app.post('/admin/settings', verifyToken, verifyAdmin, async (req, res) => {
-  const { site_title, vapid_public_key } = req.body;
-  try {
-    await query('UPDATE site_settings SET setting_value = ? WHERE setting_key = ?', [site_title, 'site_title']);
-    await query('UPDATE site_settings SET setting_value = ? WHERE setting_key = ?', [vapid_public_key, 'vapid_public_key']);
-    await logActivity(req.user.id, '更新系統設定', `更新了站點標題和VAPID公鑰`);
-    res.json({ success: true });
-  } catch (err) {
-    console.error('更新系統設定失敗:', err.message);
-    res.status(500).json({ success: false, error: '更新系統設定失敗' });
-  }
-});
-
-app.get('/admin/seo', verifyToken, verifyAdmin, async (req, res) => {
-  try {
-    const settings = await loadSiteSettings();
-    await logActivity(req.user.id, '查看SEO設定', '訪問了SEO管理頁面');
-    res.render('admin/seo', { settings });
-  } catch (err) {
-    console.error('載入SEO設定失敗:', err.message);
-    res.status(500).json({ success: false, error: '載入SEO設定失敗' });
-  }
-});
-
-app.post('/admin/seo', verifyToken, verifyAdmin, async (req, res) => {
-  try {
-    const settings = req.body;
-    for (const [key, value] of Object.entries(settings)) {
-      await query('UPDATE site_settings SET setting_value = ? WHERE setting_key = ?', [value, key]);
-    }
-    await logActivity(req.user.id, '更新SEO設定', '更新了SEO元標籤');
-    res.json({ success: true });
-  } catch (err) {
-    console.error('更新SEO設定失敗:', err.message);
-    res.status(500).json({ success: false, error: '更新SEO設定失敗' });
-  }
-});
-
-app.get('/admin/logs', verifyToken, verifyAdmin, async (req, res) => {
-  try {
-    const logs = await query(`
-      SELECT l.*, u.username 
-      FROM activity_logs l 
-      LEFT JOIN users u ON l.user_id = u.id 
-      ORDER BY l.created_at DESC 
-      LIMIT 100
-    `);
-    await logActivity(req.user.id, '查看日誌', '訪問了日誌查看頁面');
-    res.render('admin/logs', { logs, moment });
-  } catch (err) {
-    console.error('載入日誌失敗:', err.message);
-    res.status(500).json({ success: false, error: '載入日誌失敗' });
-  }
-});
-
+// Dashboard（必須在 verifyToken 之後）
 app.get('/dashboard', verifyToken, async (req, res) => {
   try {
     const user = await userService.getUserById(req.user.id);
-    console.log('載入 dashboard:', { userId: req.user.id, username: user ? user.username : '未找到用戶', role: user ? user.role : 'user' });
-    res.render('dashboard', { 
-      username: user ? user.username : '未知', 
-      role: user ? user.role : 'user'  // 新增這行：傳遞 role 變數
+    await logActivity(req.user.id, '訪問儀表板', '進入 Dashboard', req);
+    res.render('dashboard', {
+      username: user.username,
+      role: user.role
     });
   } catch (err) {
-    console.error('載入 dashboard 錯誤:', { userId: req.user.id, error: err.message, stack: err.stack });
-    res.render('dashboard', { username: '未知', role: 'user' });  // 錯誤時也提供預設 role
+    console.error('載入 dashboard 錯誤:', err.message);
+    res.redirect('/login');
   }
 });
 
+// 生字背默
 app.get('/dictation', verifyToken, async (req, res) => {
   try {
     const wordlists = await wordlistService.getWordlists(req.user.id);
@@ -482,6 +314,7 @@ app.post('/dictation/word/:wordlistId', verifyToken, async (req, res) => {
   }
 });
 
+// 任務管理
 app.get('/taskmanager', verifyToken, async (req, res) => {
   const settings = await loadSiteSettings();
   res.render('taskmanager', { VAPID_PUBLIC_KEY: settings.vapid_public_key });
@@ -497,7 +330,6 @@ app.post('/subscribe', verifyToken, async (req, res) => {
     await subscriptionService.saveSubscription(req.user.id, req.body);
     res.json({ success: true });
   } catch (err) {
-    console.error('訂閱路由錯誤:', { userId: req.user?.id, error: err.message, stack: err.stack });
     res.status(500).json({ success: false, error: '儲存訂閱失敗' });
   }
 });
@@ -520,7 +352,6 @@ app.post('/test-push', verifyToken, async (req, res) => {
 setInterval(async () => {
   try {
     const tasks = await taskService.checkUpcomingTasks();
-    console.log('檢查即將到期任務:', tasks.length, '個任務');
     for (const task of tasks) {
       const payload = {
         title: '任務提醒',
@@ -531,97 +362,53 @@ setInterval(async () => {
       for (const subscription of task.subscriptions) {
         try {
           await webpush.sendNotification(subscription, JSON.stringify(payload));
-          console.log('推送通知發送成功:', task.id, subscription.endpoint);
         } catch (err) {
-          console.error('Push Notification Error, 任務ID:', task.id, '用戶ID:', task.user_id, '訂閱:', subscription.endpoint, '錯誤:', err.message);
+          console.error('Push 發送失敗:', err.message);
         }
       }
       await taskService.markTaskAsNotified(task.id);
     }
   } catch (err) {
-    console.error('Task Notification Query Error:', err.message);
+    console.error('任務提醒錯誤:', err.message);
   }
 }, 60 * 1000);
 
 app.get('/taskmanager/tasks', verifyToken, async (req, res) => {
   try {
     const tasks = await taskService.getTasks(req.user.id);
-    console.log('返回任務列表:', { userId: req.user.id, tasks });
     res.json(tasks || []);
   } catch (err) {
-    console.error('取得任務失敗:', err.message);
     res.status(500).json({ success: false, error: '取得任務失敗' });
   }
 });
 
 app.post('/taskmanager/add', verifyToken, async (req, res) => {
   const { title, description, due_date } = req.body;
-  console.log('收到任務新增請求:', { title, description, due_date });
   if (!title || !due_date) {
-    return res.status(400).json({
-      success: false,
-      error: '請提供標題和到期時間'
-    });
+    return res.status(400).json({ success: false, error: '請提供標題和到期時間' });
   }
   try {
     const parsedDate = moment(due_date, moment.ISO_8601, true);
-    if (!parsedDate.isValid()) {
-      console.error('無效的日期格式:', due_date);
-      return res.status(400).json({
-        success: false,
-        error: '無效的日期時間格式'
-      });
+    if (!parsedDate.isValid() || parsedDate.isBefore(moment())) {
+      return res.status(400).json({ success: false, error: '無效或過期的日期' });
     }
-    if (parsedDate.isBefore(moment())) {
-      console.error('到期時間早於當前時間:', due_date);
-      return res.status(400).json({
-        success: false,
-        error: '到期時間必須是未來時間'
-      });
-    }
-    const normalizedDate = parsedDate.format('YYYY-MM-DDTHH:mm:ss.SSSZ');
-    const taskId = await taskService.addTask(
-      req.user.id,
-      title.trim(),
-      (description || '').trim(),
-      normalizedDate
-    );
-    res.json({
-      success: true,
-      taskId
-    });
+    const taskId = await taskService.addTask(req.user.id, title.trim(), (description || '').trim(), parsedDate.format('YYYY-MM-DDTHH:mm:ss.SSSZ'));
+    res.json({ success: true, taskId });
   } catch (err) {
-    console.error('創建任務錯誤:', err.message);
-    res.status(400).json({
-      success: false,
-      error: err.message || '創建任務失敗'
-    });
+    res.status(400).json({ success: false, error: err.message });
   }
 });
 
 app.put('/taskmanager/edit/:id', verifyToken, async (req, res) => {
   const { title, description, due_date } = req.body;
-  console.log('收到任務編輯請求:', { id: req.params.id, title, description, due_date });
   try {
     const parsedDate = moment(due_date, moment.ISO_8601, true);
-    if (!parsedDate.isValid()) {
-      console.error('無效的日期格式:', due_date);
-      return res.status(400).json({
-        success: false,
-        error: '無效的日期時間格式'
-      });
-    }
-    if (parsedDate.isBefore(moment())) {
-      console.error('到期時間早於當前時間:', due_date);
-      return res.status(400).json({
-        success: false,
-        error: '到期時間必須是未來時間'
-      });
+    if (!parsedDate.isValid() || parsedDate.isBefore(moment())) {
+      return res.status(400).json({ success: false, error: '無效或過期的日期' });
     }
     await taskService.editTask(req.user.id, req.params.id, title, description, due_date);
     res.json({ success: true });
   } catch (err) {
-    console.error('編輯任務錯誤:', err.message);
     res.status(400).json({ success: false, error: err.message });
   }
 });
@@ -631,18 +418,16 @@ app.delete('/taskmanager/delete/:id', verifyToken, async (req, res) => {
     await taskService.deleteTask(req.user.id, req.params.id);
     res.json({ success: true });
   } catch (err) {
-    console.error('刪除任務錯誤:', err.message);
     res.status(500).json({ success: false, error: '刪除任務失敗' });
   }
 });
 
-// 檔案管理路由
+// 檔案管理
 app.get('/filemanager', verifyToken, async (req, res) => {
   try {
     const user = await userService.getUserById(req.user.id);
-    res.render('filemanager', { username: user ? user.username : '未知' });
+    res.render('filemanager', { username: user.username });
   } catch (err) {
-    console.error('載入檔案管理頁面錯誤:', err);
     res.redirect('/dashboard');
   }
 });
@@ -652,24 +437,18 @@ app.get('/filemanager/files', verifyToken, async (req, res) => {
     const files = await fileService.getFiles(req.user.id);
     res.json(files);
   } catch (err) {
-    console.error('取得檔案列表失敗:', err);
-    res.status(500).json({ success: false, error: '取得檔案列表失敗' });
+    res.status(500).json({ success: false, error: '取得檔案失敗' });
   }
 });
 
 app.post('/filemanager/upload', verifyToken, upload.single('file'), async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ success: false, error: '請選擇一個檔案' });
-    }
+    if (!req.file) return res.status(400).json({ success: false, error: '請選擇檔案' });
     const { customName, description } = req.body;
-    if (!customName) {
-      return res.status(400).json({ success: false, error: '請提供檔案名稱' });
-    }
+    if (!customName) return res.status(400).json({ success: false, error: '請提供檔案名稱' });
     await fileService.saveFile(req.user.id, req.file.filename, req.file.originalname, customName, description || '');
     res.json({ success: true });
   } catch (err) {
-    console.error('檔案上傳錯誤:', err);
     res.status(400).json({ success: false, error: err.message });
   }
 });
@@ -677,13 +456,10 @@ app.post('/filemanager/upload', verifyToken, upload.single('file'), async (req, 
 app.put('/filemanager/edit/:filename', verifyToken, async (req, res) => {
   try {
     const { customName, description } = req.body;
-    if (!customName) {
-      return res.status(400).json({ success: false, error: '請提供檔案名稱' });
-    }
+    if (!customName) return res.status(400).json({ success: false, error: '請提供檔案名稱' });
     await fileService.editFile(req.user.id, req.params.filename, customName, description || '');
     res.json({ success: true });
   } catch (err) {
-    console.error('編輯檔案資訊錯誤:', err);
     res.status(400).json({ success: false, error: err.message });
   }
 });
@@ -693,21 +469,88 @@ app.delete('/filemanager/delete/:filename', verifyToken, async (req, res) => {
     await fileService.deleteFile(req.user.id, req.params.filename);
     res.json({ success: true });
   } catch (err) {
-    console.error('刪除檔案錯誤:', err);
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
+// 家庭筆記本
+app.get('/notebook', verifyToken, async (req, res) => {
+  try {
+    const user = await userService.getUserById(req.user.id);
+    res.render('notebook', { username: user.username });
+  } catch (err) {
+    res.redirect('/dashboard');
+  }
+});
+
+app.get('/notebook/notes', verifyToken, async (req, res) => {
+  try {
+    const notes = await noteService.getNotes(req.user.id);
+    res.json(notes);
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/notebook/add', verifyToken, async (req, res) => {
+  const { title, content } = req.body;
+  if (!title) return res.status(400).json({ success: false, error: '標題必填' });
+  try {
+    const noteId = await noteService.createNote(req.user.id, title, content);
+    res.json({ success: true, noteId });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.put('/notebook/edit/:id', verifyToken, async (req, res) => {
+  const { title, content } = req.body;
+  if (!title) return res.status(400).json({ success: false, error: '標題必填' });
+  try {
+    await noteService.updateNote(req.user.id, req.params.id, title, content);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/notebook/delete/:id', verifyToken, async (req, res) => {
+  try {
+    await noteService.deleteNote(req.user.id, req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ==================== 管理員後台 ====================
+
+app.get('/admin', verifyToken, verifyAdmin, async (req, res) => {
+  try {
+    const user = await userService.getUserById(req.user.id);
+    await logActivity(req.user.id, '訪問後台', '進入管理員儀表板', req);
+    res.render('admin/dashboard', { username: user.username });
+  } catch (err) {
+    res.status(500).json({ success: false, error: '載入失敗' });
+  }
+});
+
+// ... 其他 admin 路由保持不變 ...
+
 app.get('/logout', async (req, res) => {
-  console.log('處理登出請求');
-  await logActivity(req.user?.id, '用戶登出', `用戶ID ${req.user?.id} 登出`);
+  await logActivity(req.user?.id, '用戶登出', `用戶ID: ${req.user?.id}`, req);
   res.clearCookie('token');
   res.redirect('/login');
 });
 
+// 全局錯誤處理
 app.use((err, req, res, next) => {
-  console.error('Global Error:', err.message);
-  res.status(500).json({ success: false, error: '伺服器內部錯誤' });
+  console.error('未處理錯誤:', err);
+  logActivity(req.user?.id, '系統錯誤', err.message, req).catch(() => {});
+  res.status(500).json({ success: false, error: '伺服器錯誤' });
 });
 
-app.listen(process.env.PORT, () => console.log(`Server running on port ${process.env.PORT}`));
+app.listen(process.env.PORT, () => {
+  console.log(`Server running on port ${process.env.PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+});

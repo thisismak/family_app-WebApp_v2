@@ -298,6 +298,16 @@ body {
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
+/* 筆記本頁面 */
+.notebook .form-control {
+  border: 1px solid var(--dark-pink);
+  background: var(--text-light);
+}
+.notebook .form-control:focus {
+  border: 2px solid var(--dark-pink);
+  box-shadow: 0 0 10px rgba(255, 138, 155, 0.7);
+}
+
 /* 登入頁面標題 */
 .login h2 {
   font-weight: 600;
