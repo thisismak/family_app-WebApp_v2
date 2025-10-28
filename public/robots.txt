@@ -6,4 +6,4 @@ Disallow: /dashboard
 Disallow: /dictation
 Disallow: /taskmanager
 Disallow: /filemanager
-Sitemap: https://tools.mysandshome.com/sitemap.xml
+Sitemap: https://www.mysandshome.com/sitemap.xml
