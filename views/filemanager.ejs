@@ -209,12 +209,19 @@
         });
     });
 
-    // 刪除檔案
+    // 刪除檔案（已修正）
     function deleteFile(filename) {
       if (!confirm(`確定要刪除檔案 "${filename}" 嗎？`)) {
         return;
       }
-      fetch(`/filemanager/delete/${filename}`, {
+
+      // 防護：防止傳入 userId 等非字串
+      if (typeof filename !== 'string' || !filename.trim()) {
+        alert('檔案名稱無效');
+        return;
+      }
+
+      fetch(`/filemanager/delete/${encodeURIComponent(filename)}`, {
         method: 'DELETE',
         headers: { 'Cookie': document.cookie }
       })

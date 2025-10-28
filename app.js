@@ -521,7 +521,7 @@ app.put('/filemanager/edit/:filename', verifyToken, async (req, res) => {
 app.delete('/filemanager/delete/:filename', verifyToken, async (req, res) => {
   const { filename } = req.params;
   try {
-    await fileService.deleteFile(filename, req.user.id);
+    await fileService.deleteFile(req.user.id, filename);
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
