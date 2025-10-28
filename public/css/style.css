@@ -141,6 +141,25 @@ body {
   color: var(--dark-pink) !important; /* 懸停時使用深粉色，與 .text-info 一致 */
 }
 
+/* ===== 導覽列專用粉紅按鈕（強制白字）===== */
+.navbar .btn-primary-nav {
+  background: var(--primary-pink) !important;
+  color: white !important;
+  border: 2px solid var(--primary-pink) !important;
+  font-weight: 600;
+  border-radius: 12px;
+  transition: all 0.3s ease;
+  text-shadow: none;
+}
+
+.navbar .btn-primary-nav:hover {
+  background: var(--dark-pink) !important;
+  color: white !important;
+  border-color: var(--dark-pink) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(255, 138, 155, 0.3);
+}
+
 /* 家庭標誌 */
 .family-logo {
   display: block;
