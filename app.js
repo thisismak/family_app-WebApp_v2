@@ -12,10 +12,13 @@ const wordService = require('./services/wordService');
 const taskService = require('./services/taskService');
 const subscriptionService = require('./services/subscriptionService');
 const fileService = require('./services/fileService');
-const noteService = require('./services/noteService'); // 完整筆記服務
+const noteService = require('./services/noteService');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
+
+// 載入後台路由
+const adminRoutes = require('./routes/admin');
 
 process.env.TZ = 'Asia/Hong_Kong';
 
@@ -474,16 +477,15 @@ app.delete('/filemanager/delete/:filename', verifyToken, async (req, res) => {
 
 // ==================== 筆記本（專業版）================
 
-// 載入筆記本 + 標籤
 app.get('/notebook', verifyToken, async (req, res) => {
   try {
     const user = await userService.getUserById(req.user.id);
     const tags = await noteService.getTags(req.user.id);
-    const siteSettings = await loadSiteSettings(); // 新增這行
+    const siteSettings = await loadSiteSettings();
     res.render('notebook', { 
       username: user.username, 
       tags,
-      siteSettings // 傳入
+      siteSettings
     });
   } catch (err) {
     console.error('載入 notebook 失敗:', err);
@@ -491,7 +493,6 @@ app.get('/notebook', verifyToken, async (req, res) => {
   }
 });
 
-// 取得筆記（支援搜尋、標籤、排序）
 app.get('/notebook/notes', verifyToken, async (req, res) => {
   const { search = '', tag = null, sort = 'updated' } = req.query;
   try {
@@ -502,7 +503,6 @@ app.get('/notebook/notes', verifyToken, async (req, res) => {
   }
 });
 
-// 新增筆記
 app.post('/notebook/add', verifyToken, async (req, res) => {
   const { title, content = '', tags = [] } = req.body;
   if (!title) return res.status(400).json({ success: false, error: '標題必填' });
@@ -514,7 +514,6 @@ app.post('/notebook/add', verifyToken, async (req, res) => {
   }
 });
 
-// 編輯筆記
 app.put('/notebook/edit/:id', verifyToken, async (req, res) => {
   const { title, content = '', tags = [] } = req.body;
   if (!title) return res.status(400).json({ success: false, error: '標題必填' });
@@ -526,7 +525,6 @@ app.put('/notebook/edit/:id', verifyToken, async (req, res) => {
   }
 });
 
-// 刪除筆記
 app.delete('/notebook/delete/:id', verifyToken, async (req, res) => {
   try {
     await noteService.deleteNote(req.user.id, req.params.id);
@@ -536,7 +534,6 @@ app.delete('/notebook/delete/:id', verifyToken, async (req, res) => {
   }
 });
 
-// 置頂切換
 app.post('/notebook/pin/:id', verifyToken, async (req, res) => {
   try {
     await noteService.togglePin(req.user.id, req.params.id);
@@ -546,7 +543,6 @@ app.post('/notebook/pin/:id', verifyToken, async (req, res) => {
   }
 });
 
-// 分享筆記（24小時）
 app.post('/notebook/share/:id', verifyToken, async (req, res) => {
   try {
     const token = await noteService.createShareLink(req.params.id, 24);
@@ -557,7 +553,6 @@ app.post('/notebook/share/:id', verifyToken, async (req, res) => {
   }
 });
 
-// 唯讀分享頁面
 app.get('/share/:token', async (req, res) => {
   try {
     const note = await noteService.getNoteByShareToken(req.params.token);
@@ -570,28 +565,8 @@ app.get('/share/:token', async (req, res) => {
 
 // ==================== 管理員後台 ====================
 
-app.get('/admin', verifyToken, verifyAdmin, async (req, res) => {
-  try {
-    const user = await userService.getUserById(req.user.id);
-    await logActivity(req.user.id, '訪問後台', '進入管理員儀表板', req);
-
-    // 統計資料
-    const [userCount, taskCount, fileCount, noteCount] = await Promise.all([
-      query('SELECT COUNT(*) as count FROM users').then(r => r[0].count),
-      query('SELECT COUNT(*) as count FROM tasks WHERE due_date > NOW()').then(r => r[0].count),
-      query('SELECT COUNT(*) as count FROM files').then(r => r[0].count),
-      query('SELECT COUNT(*) as count FROM notes').then(r => r[0].count)
-    ]);
-
-    res.render('admin/dashboard', {
-      username: user.username,
-      stats: [userCount, taskCount, fileCount, noteCount]
-    });
-  } catch (err) {
-    console.error('後台載入失敗:', err);
-    res.status(500).send('後台載入失敗');
-  }
-});
+// 載入完整後台路由（包含 dashboard, settings, users, files, notes, tasks, logs, backup, clear-cache）
+app.use('/admin', verifyToken, adminRoutes);
 
 // 登出
 app.get('/logout', async (req, res) => {
