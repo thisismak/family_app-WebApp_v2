@@ -574,9 +574,22 @@ app.get('/admin', verifyToken, verifyAdmin, async (req, res) => {
   try {
     const user = await userService.getUserById(req.user.id);
     await logActivity(req.user.id, '訪問後台', '進入管理員儀表板', req);
-    res.render('admin/dashboard', { username: user.username });
+
+    // 統計資料
+    const [userCount, taskCount, fileCount, noteCount] = await Promise.all([
+      query('SELECT COUNT(*) as count FROM users').then(r => r[0].count),
+      query('SELECT COUNT(*) as count FROM tasks WHERE due_date > NOW()').then(r => r[0].count),
+      query('SELECT COUNT(*) as count FROM files').then(r => r[0].count),
+      query('SELECT COUNT(*) as count FROM notes').then(r => r[0].count)
+    ]);
+
+    res.render('admin/dashboard', {
+      username: user.username,
+      stats: [userCount, taskCount, fileCount, noteCount]
+    });
   } catch (err) {
-    res.status(500).json({ success: false, error: '載入失敗' });
+    console.error('後台載入失敗:', err);
+    res.status(500).send('後台載入失敗');
   }
 });
 

@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>檔案總管</title>
+  <link href="/css/style.css" rel="stylesheet">
+  <link href="/css/admin.css" rel="stylesheet">
+</head>
+<body class="admin-container">
+  <div class="container mt-5">
+    <div class="admin-card">
+      <h2>檔案總管</h2>
+      <table class="table">
+        <thead>
+          <tr>
+            <th>檔名</th>
+            <th>自訂名稱</th>
+            <th>上傳者</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% files.forEach(f => { %>
+            <tr>
+              <td><%= f.original_name %></td>
+              <td><%= f.custom_name %></td>
+              <td><%= f.username %></td>
+              <td>
+                <button class="btn btn-danger btn-sm" onclick="del('<%= f.filename %>')">刪除</button>
+              </td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <a href="/admin" class="btn btn-secondary">返回</a>
+  </div>
+  <script>
+    async function del(filename) {
+      if (confirm('確定刪除？')) {
+        await fetch('/admin/files/' + filename, { method: 'DELETE' });
+        location.reload();
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>任務總覽</title>
+  <link href="/css/style.css" rel="stylesheet">
+  <link href="/css/admin.css" rel="stylesheet">
+</head>
+<body class="admin-container">
+  <div class="container mt-5">
+    <div class="admin-card">
+      <h2>任務總覽</h2>
+      <ul class="list-group">
+        <% tasks.forEach(t => { %>
+          <li class="list-group-item">
+            <strong>[<%= t.username %>]</strong> <%= t.title %> 
+            <small class="text-muted">（到期: <%= new Date(t.due_date).toLocaleString() %>）</small>
+          </li>
+        <% }) %>
+      </ul>
+    </div>
+    <a href="/admin" class="btn btn-secondary">返回</a>
+  </div>
+</body>
+</html>

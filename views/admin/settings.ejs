@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8" />
+  <title>站點設定</title>
+  <link href="/css/style.css" rel="stylesheet">
+  <link href="/css/admin.css" rel="stylesheet">
+</head>
+<body class="admin-container">
+  <div class="container mt-5">
+    <div class="admin-card">
+      <h2>站點設定</h2>
+      <form id="settings-form">
+        <div class="mb-3">
+          <label class="form-label">網站標題</label>
+          <input type="text" class="form-control" name="site_title" value="<%= settings.site_title || '' %>">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">首頁 OG 標題</label>
+          <input type="text" class="form-control" name="index_og_title" value="<%= settings.index_og_title || '' %>">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Meta 描述</label>
+          <input type="text" class="form-control" name="index_meta_description" value="<%= settings.index_meta_description || '' %>">
+        </div>
+        <button type="submit" class="btn btn-admin">儲存所有設定</button>
+      </form>
+    </div>
+    <a href="/admin" class="btn btn-secondary">返回</a>
+  </div>
+
+  <script>
+    document.getElementById('settings-form').onsubmit = async e => {
+      e.preventDefault();
+      const formData = new FormData(e.target);
+      for (const [key, value] of formData.entries()) {
+        await fetch('/admin/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key, value })
+        });
+      }
+      alert('所有設定已更新！請重新整理頁面');
+    };
+  </script>
+</body>
+</html>

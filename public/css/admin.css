@@ -1,0 +1,24 @@
+/* public/css/admin.css */
+.admin-container {
+  background: linear-gradient(135deg, #FFE4E1, #FFC1CC);
+  min-height: 100vh;
+  padding: 20px;
+  font-family: 'Noto Sans TC', sans-serif;
+}
+.admin-card {
+  background: white;
+  border-radius: 16px;
+  box-shadow: 0 8px 24px rgba(255, 105, 180, 0.2);
+  padding: 24px;
+  margin-bottom: 20px;
+}
+.btn-admin {
+  background: #FF69B4;
+  color: white;
+  border-radius: 12px;
+  border: none;
+  padding: 8px 16px;
+}
+.btn-admin:hover {
+  background: #FF1493;
+}

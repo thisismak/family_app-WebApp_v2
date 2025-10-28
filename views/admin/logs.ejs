@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>活動日誌</title>
+  <link href="/css/style.css" rel="stylesheet">
+  <link href="/css/admin.css" rel="stylesheet">
+</head>
+<body class="admin-container">
+  <div class="container mt-5">
+    <div class="admin-card">
+      <h2>活動日誌</h2>
+      <table class="table table-sm">
+        <thead>
+          <tr>
+            <th>時間</th>
+            <th>使用者</th>
+            <th>動作</th>
+            <th>IP</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% logs.forEach(l => { %>
+            <tr>
+              <td><%= new Date(l.created_at).toLocaleString() %></td>
+              <td><%= l.user_id ? 'User#' + l.user_id : '匿名' %></td>
+              <td><%= l.action %></td>
+              <td><%= l.ip_address %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <a href="/admin" class="btn btn-secondary">返回</a>
+  </div>
+</body>
+</html>
