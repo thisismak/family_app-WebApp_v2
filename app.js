@@ -437,21 +437,23 @@ app.get('/taskmanager/tasks', verifyToken, async (req, res) => {
   }
 });
 
+// 新增任務
 app.post('/taskmanager/add', verifyToken, async (req, res) => {
   const { title, description, due_date } = req.body;
   try {
-    const id = await taskService.createTask(req.user.id, title, description, due_date);
+    const id = await taskService.addTask(req.user.id, title, description, due_date);  // 修正
     res.json({ success: true, id });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }
 });
 
+// 編輯任務
 app.put('/taskmanager/edit/:id', verifyToken, async (req, res) => {
   const { id } = req.params;
   const { title, description, due_date } = req.body;
   try {
-    await taskService.updateTask(id, req.user.id, title, description, due_date);
+    await taskService.editTask(req.user.id, id, title, description, due_date);  // 修正
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
