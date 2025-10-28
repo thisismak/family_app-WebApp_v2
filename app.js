@@ -406,11 +406,12 @@ app.post('/dictation/save', verifyToken, async (req, res) => {
 });
 
 // ==================== 任務管理 ====================
+// 路由 1: 頁面載入
 app.get('/taskmanager', verifyToken, async (req, res) => {
   try {
     const settings = await loadSiteSettings();
     const vapidKey = settings.vapid_public_key || process.env.VAPID_PUBLIC_KEY || '';
-    const tasks = await taskService.getTasksByUserId(req.user.id) || [];
+    const tasks = await taskService.getTasks(req.user.id) || [];  // 修正
     res.render('taskmanager', {
       VAPID_PUBLIC_KEY: vapidKey,
       tasks: tasks,
@@ -426,9 +427,10 @@ app.get('/taskmanager', verifyToken, async (req, res) => {
   }
 });
 
+// 路由 2: API 取得任務
 app.get('/taskmanager/tasks', verifyToken, async (req, res) => {
   try {
-    const tasks = await taskService.getTasksByUserId(req.user.id) || [];
+    const tasks = await taskService.getTasks(req.user.id) || [];  // 修正
     res.json(tasks);
   } catch (err) {
     res.status(500).json({ error: err.message });
