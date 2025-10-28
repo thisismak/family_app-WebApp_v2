@@ -1,0 +1,220 @@
+/* public/css/notebook.css */
+/* 只放筆記本專屬樣式，避免污染全站 */
+
+/* 筆記網格 */
+#notes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.note-card {
+  background: var(--text-light);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: var(--shadow);
+  transition: all 0.3s ease;
+  border-left: 4px solid #ddd;
+}
+
+.note-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+}
+
+.note-card.pinned {
+  border-left: 4px solid #f59e0b;
+  background: #fffbeb;
+}
+
+.note-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.note-header h3 {
+  margin: 0;
+  font-size: 1.1em;
+  color: var(--text-dark);
+}
+
+.pin-btn {
+  background: none;
+  border: none;
+  font-size: 1.2em;
+  cursor: pointer;
+  color: var(--dark-pink);
+}
+
+.note-preview {
+  color: #4b5563;
+  font-size: 0.9em;
+  margin: 8px 0;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.note-tags {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin: 8px 0;
+}
+
+.note-tags .tag {
+  padding: 2px 8px;
+  border-radius: 12px;
+  color: white;
+  font-size: 0.75em;
+}
+
+.note-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.note-actions button {
+  flex: 1;
+  padding: 6px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
+.note-actions button:nth-child(1) { background: var(--primary-pink); color: var(--text-dark); }
+.note-actions button:nth-child(2) { background: #3b82f6; color: white; }
+.note-actions button:nth-child(3) { background: #ef4444; color: white; }
+
+/* Modal */
+.modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal.show { display: flex; }
+
+.modal-content {
+  background: white;
+  width: 90%;
+  max-width: 700px;
+  border-radius: 12px;
+  padding: 20px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow);
+}
+
+#note-title {
+  width: 100%;
+  padding: 12px;
+  font-size: 1.2em;
+  border: 1px solid var(--dark-pink);
+  border-radius: 8px;
+  margin-bottom: 12px;
+  font-family: var(--family-font);
+}
+
+.editor-tabs {
+  display: flex;
+  border-bottom: 1px solid #eee;
+  margin-bottom: 12px;
+}
+
+.tab {
+  padding: 10px 20px;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.tab.active {
+  border-bottom: 2px solid var(--dark-pink);
+  color: var(--dark-pink);
+}
+
+#note-content, #preview {
+  width: 100%;
+  min-height: 300px;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-family: monospace;
+  font-size: 1em;
+}
+
+#preview {
+  background: #f9fafb;
+  display: none;
+  line-height: 1.6;
+}
+
+.tags-input {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0;
+  align-items: center;
+}
+
+#tag-input {
+  flex: 1;
+  min-width: 120px;
+  padding: 8px;
+  border: 1px solid var(--dark-pink);
+  border-radius: 6px;
+}
+
+#tag-list .tag {
+  background: var(--primary-pink);
+  color: var(--text-dark);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.8em;
+  cursor: pointer;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.actions button {
+  flex: 1;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  font-family: var(--family-font);
+}
+
+#save-note { background: #10b981; color: white; }
+#cancel-edit { background: #6b7280; color: white; }
+#share-note { background: #3b82f6; color: white; }
+
+/* 響應式 */
+@media (max-width: 768px) {
+  #notes-grid {
+    grid-template-columns: 1fr;
+  }
+  .modal-content {
+    width: 95%;
+    padding: 15px;
+  }
+}

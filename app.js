@@ -12,7 +12,7 @@ const wordService = require('./services/wordService');
 const taskService = require('./services/taskService');
 const subscriptionService = require('./services/subscriptionService');
 const fileService = require('./services/fileService');
-const noteService = require('./services/noteService'); // 新增：筆記服務
+const noteService = require('./services/noteService'); // 完整筆記服務
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
@@ -149,7 +149,6 @@ async function logActivity(userId, action, details, req = null) {
     if (!err.message.includes('Unknown column')) {
       console.error('日誌記錄失敗:', err.message);
     }
-    // 不中斷流程
   }
 }
 
@@ -232,7 +231,7 @@ app.post('/login', async (req, res) => {
 
 // ==================== 登入後路由 ====================
 
-// Dashboard（必須在 verifyToken 之後）
+// Dashboard
 app.get('/dashboard', verifyToken, async (req, res) => {
   try {
     const user = await userService.getUserById(req.user.id);
@@ -247,7 +246,7 @@ app.get('/dashboard', verifyToken, async (req, res) => {
   }
 });
 
-// 生字背默
+// 生字背默（保持不變）
 app.get('/dictation', verifyToken, async (req, res) => {
   try {
     const wordlists = await wordlistService.getWordlists(req.user.id);
@@ -314,7 +313,7 @@ app.post('/dictation/word/:wordlistId', verifyToken, async (req, res) => {
   }
 });
 
-// 任務管理
+// 任務管理（保持不變）
 app.get('/taskmanager', verifyToken, async (req, res) => {
   const settings = await loadSiteSettings();
   res.render('taskmanager', { VAPID_PUBLIC_KEY: settings.vapid_public_key });
@@ -422,7 +421,7 @@ app.delete('/taskmanager/delete/:id', verifyToken, async (req, res) => {
   }
 });
 
-// 檔案管理
+// 檔案管理（保持不變）
 app.get('/filemanager', verifyToken, async (req, res) => {
   try {
     const user = await userService.getUserById(req.user.id);
@@ -473,53 +472,99 @@ app.delete('/filemanager/delete/:filename', verifyToken, async (req, res) => {
   }
 });
 
-// 家庭筆記本
+// ==================== 家庭筆記本（專業版）================
+
+// 載入筆記本 + 標籤
 app.get('/notebook', verifyToken, async (req, res) => {
   try {
     const user = await userService.getUserById(req.user.id);
-    res.render('notebook', { username: user.username });
+    const tags = await noteService.getTags(req.user.id);
+    const siteSettings = await loadSiteSettings(); // 新增這行
+    res.render('notebook', { 
+      username: user.username, 
+      tags,
+      siteSettings // 傳入
+    });
   } catch (err) {
+    console.error('載入 notebook 失敗:', err);
     res.redirect('/dashboard');
   }
 });
 
+// 取得筆記（支援搜尋、標籤、排序）
 app.get('/notebook/notes', verifyToken, async (req, res) => {
+  const { search = '', tag = null, sort = 'updated' } = req.query;
   try {
-    const notes = await noteService.getNotes(req.user.id);
+    const notes = await noteService.getNotes(req.user.id, search, tag, sort);
     res.json(notes);
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
+// 新增筆記
 app.post('/notebook/add', verifyToken, async (req, res) => {
-  const { title, content } = req.body;
+  const { title, content = '', tags = [] } = req.body;
   if (!title) return res.status(400).json({ success: false, error: '標題必填' });
   try {
-    const noteId = await noteService.createNote(req.user.id, title, content);
+    const noteId = await noteService.createNote(req.user.id, title, content, tags);
     res.json({ success: true, noteId });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
+// 編輯筆記
 app.put('/notebook/edit/:id', verifyToken, async (req, res) => {
-  const { title, content } = req.body;
+  const { title, content = '', tags = [] } = req.body;
   if (!title) return res.status(400).json({ success: false, error: '標題必填' });
   try {
-    await noteService.updateNote(req.user.id, req.params.id, title, content);
+    await noteService.updateNote(req.user.id, req.params.id, title, content, tags);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 });
 
+// 刪除筆記
 app.delete('/notebook/delete/:id', verifyToken, async (req, res) => {
   try {
     await noteService.deleteNote(req.user.id, req.params.id);
     res.json({ success: true });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 置頂切換
+app.post('/notebook/pin/:id', verifyToken, async (req, res) => {
+  try {
+    await noteService.togglePin(req.user.id, req.params.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 分享筆記（24小時）
+app.post('/notebook/share/:id', verifyToken, async (req, res) => {
+  try {
+    const token = await noteService.createShareLink(req.params.id, 24);
+    const url = `${req.protocol}://${req.get('host')}/share/${token}`;
+    res.json({ success: true, url });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 唯讀分享頁面
+app.get('/share/:token', async (req, res) => {
+  try {
+    const note = await noteService.getNoteByShareToken(req.params.token);
+    if (!note) return res.status(404).render('error', { message: '連結無效或已過期' });
+    res.render('share-note', { note });
+  } catch (err) {
+    res.status(500).render('error', { message: '載入失敗' });
   }
 });
 
@@ -535,8 +580,7 @@ app.get('/admin', verifyToken, verifyAdmin, async (req, res) => {
   }
 });
 
-// ... 其他 admin 路由保持不變 ...
-
+// 登出
 app.get('/logout', async (req, res) => {
   await logActivity(req.user?.id, '用戶登出', `用戶ID: ${req.user?.id}`, req);
   res.clearCookie('token');

@@ -147,13 +147,85 @@ CREATE TABLE IF NOT EXISTS notes (
   user_id INT NOT NULL,
   title VARCHAR(255) NOT NULL,
   content TEXT,
+  is_pinned BOOLEAN DEFAULT FALSE,
+  color VARCHAR(7) DEFAULT '#FFFFFF',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   INDEX idx_user (user_id),
   INDEX idx_title (title),
-  INDEX idx_updated (updated_at)
+  INDEX idx_updated (updated_at),
+  INDEX idx_pinned (is_pinned)
 );
+
+-- 新增：筆記標籤表
+CREATE TABLE IF NOT EXISTS note_tags (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(50) NOT NULL UNIQUE,
+  color VARCHAR(7) DEFAULT '#3B82F6',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_name (name)
+);
+
+-- 新增：筆記與標籤關聯表
+CREATE TABLE IF NOT EXISTS note_tag_relations (
+  note_id INT NOT NULL,
+  tag_id INT NOT NULL,
+  PRIMARY KEY (note_id, tag_id),
+  FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE,
+  FOREIGN KEY (tag_id) REFERENCES note_tags(id) ON DELETE CASCADE
+);
+
+-- 新增：共享筆記連結表
+CREATE TABLE IF NOT EXISTS shared_notes (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  note_id INT NOT NULL,
+  share_token CHAR(32) NOT NULL UNIQUE,
+  expires_at DATETIME NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (note_id) REFERENCES notes(id) ON DELETE CASCADE,
+  INDEX idx_token (share_token),
+  INDEX idx_expires (expires_at)
+);
+
+-- 初始化常用標籤
+INSERT IGNORE INTO note_tags (name, color) VALUES
+('購物', '#EF4444'),
+('食譜', '#10B981'),
+('待辦', '#F59E0B'),
+('會議', '#8B5CF6'),
+('家庭', '#EC4899'),
+('學習', '#06B6D4'),
+('旅行', '#6366F1'),
+('健康', '#14B8A6');
+
+-- 檢查並添加 notes.is_pinned 和 color
+SET @pinned_exists = (
+  SELECT COUNT(*)
+  FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_NAME = 'notes' AND COLUMN_NAME = 'is_pinned'
+);
+SET @color_exists = (
+  SELECT COUNT(*)
+  FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_NAME = 'notes' AND COLUMN_NAME = 'color'
+);
+
+SET @sql = IF(@pinned_exists = 0,
+  'ALTER TABLE notes ADD COLUMN is_pinned BOOLEAN DEFAULT FALSE',
+  'SELECT 1'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @sql = IF(@color_exists = 0,
+  'ALTER TABLE notes ADD COLUMN color VARCHAR(7) DEFAULT "#FFFFFF"',
+  'SELECT 1'
+);
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
 
 -- 檢查並添加 tasks.notified
 SET @column_exists = (
