@@ -1,38 +1,53 @@
 let currentNoteId = null;
 let notes = [];
 
-// 載入筆記
+// 載入筆記（加入錯誤處理）
 async function loadNotes() {
   const search = document.getElementById('search').value;
   const tag = document.getElementById('tag-filter').value;
   const sort = document.getElementById('sort').value;
 
-  const res = await fetch(`/notebook/notes?search=${encodeURIComponent(search)}&tag=${tag}&sort=${sort}`);
-  notes = await res.json();
+  try {
+    const res = await fetch(`/notebook/notes?search=${encodeURIComponent(search)}&tag=${tag}&sort=${sort}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    notes = Array.isArray(data) ? data : [];
+  } catch (err) {
+    console.error('載入筆記失敗:', err);
+    notes = [];
+  }
   renderNotes();
 }
 
-// 渲染筆記卡片
+// 渲染筆記卡片（防護 tags / tag_colors）
 function renderNotes() {
   const grid = document.getElementById('notes-grid');
-  grid.innerHTML = notes.map(note => `
-    <div class="note-card ${note.is_pinned ? 'pinned' : ''}" style="border-left: 4px solid ${note.color || '#ddd'}">
-      <div class="note-header">
-        <h3>${escapeHtml(note.title)}</h3>
-        <button class="pin-btn" data-id="${note.id}">${note.is_pinned ? 'Unpin' : 'Pin'}</button>
+  grid.innerHTML = notes.map(note => {
+    const tags = Array.isArray(note.tags) ? note.tags : [];
+    const tagColors = Array.isArray(note.tag_colors) ? note.tag_colors : [];
+    return `
+      <div class="note-card ${note.is_pinned ? 'pinned' : ''}" style="border-left: 4px solid ${note.color || '#ddd'}">
+        <div class="note-header">
+          <h3>${escapeHtml(note.title || '無標題')}</h3>
+          <button class="pin-btn" data-id="${note.id}">${note.is_pinned ? 'Unpin' : 'Pin'}</button>
+        </div>
+        <div class="note-preview">
+          ${(note.content || '').length > 0 
+            ? marked.parse(note.content).replace(/<[^>]*>/g, '').slice(0, 100) + '...'
+            : '<em>無內容</em>'}
+        </div>
+        <div class="note-tags">
+          ${tags.map((tag, i) => `<span class="tag" style="background:${tagColors[i] || '#999'}">${escapeHtml(tag)}</span>`).join('')}
+        </div>
+        <div class="note-actions">
+          <button onclick="editNote(${note.id})">編輯</button>
+          <button onclick="shareNote(${note.id})">分享</button>
+          <button class="delete" onclick="deleteNote(${note.id})">刪除</button>
+        </div>
+        <small>${new Date(note.updated_at).toLocaleString()}</small>
       </div>
-      <div class="note-preview">${marked.parse(note.content || '').replace(/<[^>]*>/g, '').slice(0, 100)}...</div>
-      <div class="note-tags">
-        ${note.tags.map((tag, i) => `<span class="tag" style="background:${note.tag_colors[i]}">${tag}</span>`).join('')}
-      </div>
-      <div class="note-actions">
-        <button onclick="editNote(${note.id})">編輯</button>
-        <button onclick="shareNote(${note.id})">分享</button>
-        <button class="delete" onclick="deleteNote(${note.id})">刪除</button>
-      </div>
-      <small>${new Date(note.updated_at).toLocaleString()}</small>
-    </div>
-  `).join('');
+    `;
+  }).join('');
 }
 
 // 編輯筆記
@@ -51,21 +66,24 @@ async function editNote(id) {
 document.getElementById('save-note').onclick = async () => {
   const title = document.getElementById('note-title').value.trim();
   const content = document.getElementById('note-content').value;
-  const tags = Array.from(document.querySelectorAll('#tag-list .tag')).map(t => t.textContent);
+  const tags = Array.from(document.querySelectorAll('#tag-list .tag')).map(t => t.textContent.trim()).filter(t => t);
 
   if (!title) return alert('請輸入標題');
 
   const url = currentNoteId ? `/notebook/edit/${currentNoteId}` : '/notebook/add';
   const method = currentNoteId ? 'PUT' : 'POST';
 
-  await fetch(url, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ title, content, tags })
-  });
-
-  closeModal();
-  loadNotes();
+  try {
+    await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title, content, tags })
+    });
+    closeModal();
+    loadNotes();
+  } catch (err) {
+    alert('儲存失敗，請稍後再試');
+  }
 };
 
 // 標籤輸入
@@ -78,7 +96,9 @@ document.getElementById('tag-input').addEventListener('keydown', e => {
 
 function addTag(name) {
   const list = document.getElementById('tag-list');
-  if (!list.querySelector(`.tag:contains(${name})`)) {
+  // 改用 JS 判斷是否重複（取代 :contains）
+  const exists = Array.from(list.querySelectorAll('.tag')).some(span => span.textContent === name);
+  if (!exists && name) {
     const span = document.createElement('span');
     span.className = 'tag';
     span.textContent = name;
@@ -89,28 +109,44 @@ function addTag(name) {
 
 function renderTags(tags) {
   const list = document.getElementById('tag-list');
-  list.innerHTML = tags.map(t => `<span class="tag" onclick="this.remove()">${t}</span>`).join('');
+  list.innerHTML = (Array.isArray(tags) ? tags : []).map(t => 
+    `<span class="tag" onclick="this.remove()">${escapeHtml(t)}</span>`
+  ).join('');
 }
 
 // 分享
 async function shareNote(id) {
-  const res = await fetch(`/notebook/share/${id}`, { method: 'POST' });
-  const data = await res.json();
-  if (data.success) {
-    prompt('分享連結（24小時有效）：', data.url);
+  try {
+    const res = await fetch(`/notebook/share/${id}`, { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      prompt('分享連結（24小時有效）：', data.url);
+    } else {
+      alert('分享失敗');
+    }
+  } catch (err) {
+    alert('分享失敗');
   }
 }
 
 // 置頂 / 刪除
 async function togglePin(id) {
-  await fetch(`/notebook/pin/${id}`, { method: 'POST' });
-  loadNotes();
+  try {
+    await fetch(`/notebook/pin/${id}`, { method: 'POST' });
+    loadNotes();
+  } catch (err) {
+    alert('操作失敗');
+  }
 }
 
 async function deleteNote(id) {
   if (confirm('確定刪除？')) {
-    await fetch(`/notebook/delete/${id}`, { method: 'DELETE' });
-    loadNotes();
+    try {
+      await fetch(`/notebook/delete/${id}`, { method: 'DELETE' });
+      loadNotes();
+    } catch (err) {
+      alert('刪除失敗');
+    }
   }
 }
 
@@ -125,9 +161,14 @@ document.querySelectorAll('.tab').forEach(tab => {
 
 function showTab(tab) {
   const content = document.getElementById('note-content').value;
-  document.getElementById('preview').innerHTML = marked.parse(content);
+  const preview = document.getElementById('preview');
+  if (typeof marked === 'function') {
+    preview.innerHTML = marked.parse(content);
+  } else {
+    preview.innerHTML = '<em>Markdown 載入中...</em>';
+  }
   document.getElementById('note-content').style.display = tab === 'write' ? 'block' : 'none';
-  document.getElementById('preview').style.display = tab === 'preview' ? 'block' : 'none';
+  preview.style.display = tab === 'preview' ? 'block' : 'none';
 }
 
 // 初始化
@@ -163,5 +204,11 @@ document.addEventListener('click', e => {
   }
 });
 
-// 載入
-loadNotes();
+// 頁面載入完成後執行
+document.addEventListener('DOMContentLoaded', () => {
+  // 確保 marked 已載入
+  if (typeof marked === 'undefined') {
+    console.warn('marked 未載入，Markdown 預覽將失效');
+  }
+  loadNotes();
+});

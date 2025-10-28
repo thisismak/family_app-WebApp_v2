@@ -22,7 +22,7 @@
       <input type="text" id="search" placeholder="搜尋筆記..." />
       <select id="tag-filter">
         <option value="">所有標籤</option>
-        <% tags.forEach(t => { %>
+        <% (Array.isArray(tags) ? tags : []).forEach(t => { %>
           <option value="<%= t.id %>"><%= t.name %></option>
         <% }) %>
       </select>

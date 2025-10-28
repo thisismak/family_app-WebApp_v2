@@ -13,7 +13,7 @@ const taskService = require('./services/taskService');
 const subscriptionService = require('./services/subscriptionService');
 const fileService = require('./services/fileService');
 const noteService = require('./services/noteService');
-const siteSettingsService = require('./services/siteSettingsService'); // 新增
+const siteSettingsService = require('./services/siteSettingsService');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
@@ -82,6 +82,13 @@ webpush.setVapidDetails(
   process.env.VAPID_PUBLIC_KEY,
   process.env.VAPID_PRIVATE_KEY
 );
+
+// 全局 res.locals 防護，確保 EJS 不會因 undefined 崩潰
+app.use((req, res, next) => {
+  res.locals.user = req.user || null;
+  res.locals.error = null;
+  next();
+});
 
 initializeDatabase().catch(err => {
   console.error('資料庫初始化失敗:', err.message);
@@ -157,12 +164,12 @@ const verifyToken = (req, res, next) => {
   }
 };
 
-// 管理員驗證（同步 + then/catch）
+// 管理員驗證
 const verifyAdmin = (req, res, next) => {
   userService.getUserById(req.user.id)
     .then(user => {
       if (user && user.role === 'admin') {
-        req.user = user; // 更新最新資料
+        req.user = user;
         next();
       } else {
         res.status(403).send('<h1>403 禁止存取</h1>');
@@ -178,7 +185,7 @@ const verifyAdmin = (req, res, next) => {
 
 app.get('/', async (req, res) => {
   const settings = await loadSiteSettings();
-  res.render('index', { siteSettings: settings });
+  res.render('index', { siteSettings: settings, error: null });
 });
 
 app.get('/robots.txt', (req, res) => {
@@ -189,9 +196,10 @@ app.get('/sitemap.xml', async (req, res) => {
   try {
     const settings = await loadSiteSettings();
     res.header('Content-Type', 'application/xml');
-    res.render('sitemap', { settings });
+    res.render('sitemap', { settings, error: null });
   } catch (err) {
-    res.status(500).send('生成網站地圖失敗');
+    console.error('生成網站地圖失敗:', err.message);
+    res.status(500).render('error', { message: '生成網站地圖失敗', error: err.message });
   }
 });
 
@@ -235,9 +243,8 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// ==================== 管理員後台路由（全部搬進來）===================
+// ==================== 管理員後台路由 ====================
 
-// 儀表板
 app.get('/admin', verifyToken, verifyAdmin, (req, res) => {
   Promise.all([
     query('SELECT COUNT(*) as count FROM users').then(r => r[0].count || 0),
@@ -245,23 +252,23 @@ app.get('/admin', verifyToken, verifyAdmin, (req, res) => {
     query('SELECT COUNT(*) as count FROM files').then(r => r[0].count || 0),
     query('SELECT COUNT(*) as count FROM notes').then(r => r[0].count || 0)
   ])
-  .then(([userCount, taskCount, fileCount, noteCount]) => {
-    res.render('admin/dashboard', {
-      stats: [userCount, taskCount, fileCount, noteCount],
-      username: req.user.username
+    .then(([userCount, taskCount, fileCount, noteCount]) => {
+      res.render('admin/dashboard', {
+        stats: [userCount, taskCount, fileCount, noteCount],
+        username: req.user.username,
+        error: null
+      });
+    })
+    .catch(err => {
+      console.error('載入儀表板失敗:', err);
+      res.status(500).render('error', { message: '載入失敗', error: err.message });
     });
-  })
-  .catch(err => {
-    console.error('載入儀表板失敗:', err);
-    res.status(500).render('error', { message: '載入失敗' });
-  });
 });
 
-// 站點設定
 app.get('/admin/settings', verifyToken, verifyAdmin, (req, res) => {
   siteSettingsService.getAllSettings()
-    .then(settings => res.render('admin/settings', { settings }))
-    .catch(err => res.status(500).render('error', { message: '載入設定失敗' }));
+    .then(settings => res.render('admin/settings', { settings, error: null }))
+    .catch(err => res.status(500).render('error', { message: '載入設定失敗', error: err.message }));
 });
 
 app.post('/admin/settings', verifyToken, verifyAdmin, (req, res) => {
@@ -275,21 +282,19 @@ app.post('/admin/settings', verifyToken, verifyAdmin, (req, res) => {
     .catch(err => res.status(500).json({ error: err.message }));
 });
 
-// 使用者管理
 app.get('/admin/users', verifyToken, verifyAdmin, (req, res) => {
   query(`
     SELECT u.id, u.username, u.email, u.role, u.created_at 
     FROM users u 
     ORDER BY u.created_at DESC
   `)
-    .then(users => res.render('admin/users', { users }))
+    .then(users => res.render('admin/users', { users, error: null }))
     .catch(err => {
       console.error('載入使用者失敗:', err);
-      res.status(500).render('error', { message: '載入使用者失敗' });
+      res.status(500).render('error', { message: '載入使用者失敗', error: err.message });
     });
 });
 
-// 檔案總管
 app.get('/admin/files', verifyToken, verifyAdmin, (req, res) => {
   query(`
     SELECT f.*, u.username 
@@ -297,14 +302,13 @@ app.get('/admin/files', verifyToken, verifyAdmin, (req, res) => {
     JOIN users u ON f.user_id = u.id 
     ORDER BY f.uploaded_at DESC
   `)
-    .then(files => res.render('admin/files', { files }))
+    .then(files => res.render('admin/files', { files, error: null }))
     .catch(err => {
       console.error('載入檔案失敗:', err);
-      res.status(500).render('error', { message: '載入檔案失敗' });
+      res.status(500).render('error', { message: '載入檔案失敗', error: err.message });
     });
 });
 
-// 筆記總管
 app.get('/admin/notes', verifyToken, verifyAdmin, (req, res) => {
   query(`
     SELECT n.*, u.username 
@@ -312,14 +316,13 @@ app.get('/admin/notes', verifyToken, verifyAdmin, (req, res) => {
     JOIN users u ON n.user_id = u.id 
     ORDER BY n.updated_at DESC
   `)
-    .then(notes => res.render('admin/notes', { notes }))
+    .then(notes => res.render('admin/notes', { notes, error: null }))
     .catch(err => {
       console.error('載入筆記失敗:', err);
-      res.status(500).render('error', { message: '載入筆記失敗' });
+      res.status(500).render('error', { message: '載入筆記失敗', error: err.message });
     });
 });
 
-// 任務總覽
 app.get('/admin/tasks', verifyToken, verifyAdmin, (req, res) => {
   query(`
     SELECT t.*, u.username 
@@ -327,21 +330,19 @@ app.get('/admin/tasks', verifyToken, verifyAdmin, (req, res) => {
     JOIN users u ON t.user_id = u.id 
     ORDER BY t.due_date DESC
   `)
-    .then(tasks => res.render('admin/tasks', { tasks }))
+    .then(tasks => res.render('admin/tasks', { tasks, error: null }))
     .catch(err => {
       console.error('載入任務失敗:', err);
-      res.status(500).render('error', { message: '載入任務失敗' });
+      res.status(500).render('error', { message: '載入任務失敗', error: err.message });
     });
 });
 
-// 活動日誌
 app.get('/admin/logs', verifyToken, verifyAdmin, (req, res) => {
   query('SELECT * FROM activity_logs ORDER BY created_at DESC LIMIT 100')
-    .then(logs => res.render('admin/logs', { logs }))
-    .catch(err => res.status(500).render('error', { message: '載入失敗' }));
+    .then(logs => res.render('admin/logs', { logs, error: null }))
+    .catch(err => res.status(500).render('error', { message: '載入失敗', error: err.message }));
 });
 
-// 備份資料庫
 app.get('/admin/backup', verifyToken, verifyAdmin, (req, res) => {
   const file = `backup_${moment().format('YYYYMMDD_HHmmss')}.sql`;
   const cmd = `mysqldump -u ${process.env.DB_USER} -p${process.env.DB_PASSWORD} ${process.env.DB_NAME} > ${file}`;
@@ -354,7 +355,6 @@ app.get('/admin/backup', verifyToken, verifyAdmin, (req, res) => {
     });
 });
 
-// 清除快取
 app.post('/admin/clear-cache', verifyToken, verifyAdmin, (req, res) => {
   cachedSettings = null;
   settingsLastLoaded = 0;
@@ -367,26 +367,28 @@ app.post('/admin/clear-cache', verifyToken, verifyAdmin, (req, res) => {
 app.get('/dashboard', verifyToken, async (req, res) => {
   try {
     const user = await userService.getUserById(req.user.id);
+    if (!user) throw new Error('用戶不存在');
     await logActivity(req.user.id, '訪問儀表板', '進入 Dashboard', req);
     res.render('dashboard', {
-      username: user.username,
-      role: user.role
+      username: user.username || '未知用戶',
+      role: user.role || 'user',
+      error: null
     });
   } catch (err) {
     console.error('載入 dashboard 錯誤:', err.message);
-    res.redirect('/login');
+    res.clearCookie('token');
+    res.redirect('/login?error=session_expired');
   }
 });
-
-// ...（生字背默、任務、檔案、筆記等路由保持不變）...
 
 // 生字背默
 app.get('/dictation', verifyToken, async (req, res) => {
   try {
-    const wordlists = await wordlistService.getWordlists(req.user.id);
-    res.render('dictation', { wordlists });
+    const wordlists = await wordlistService.getWordlists(req.user.id) || [];
+    res.render('dictation', { wordlists, error: null });
   } catch (err) {
-    res.render('dictation', { wordlists: [] });
+    console.error('載入 dictation 失敗:', err.message);
+    res.render('dictation', { wordlists: [], error: '載入生字背默失敗，請稍後再試' });
   }
 });
 
@@ -403,7 +405,229 @@ app.post('/dictation/save', verifyToken, async (req, res) => {
   }
 });
 
-// ...（其他路由略，保持原樣）...
+// ==================== 任務管理 ====================
+app.get('/taskmanager', verifyToken, async (req, res) => {
+  try {
+    const settings = await loadSiteSettings();
+    const vapidKey = settings.vapid_public_key || process.env.VAPID_PUBLIC_KEY || '';
+    const tasks = await taskService.getTasksByUserId(req.user.id) || [];
+    res.render('taskmanager', {
+      VAPID_PUBLIC_KEY: vapidKey,
+      tasks: tasks,
+      error: null
+    });
+  } catch (err) {
+    console.error('載入 taskmanager 失敗:', err.message);
+    res.render('taskmanager', {
+      VAPID_PUBLIC_KEY: process.env.VAPID_PUBLIC_KEY || '',
+      tasks: [],
+      error: '載入任務管理失敗，請稍後再試'
+    });
+  }
+});
+
+app.get('/taskmanager/tasks', verifyToken, async (req, res) => {
+  try {
+    const tasks = await taskService.getTasksByUserId(req.user.id) || [];
+    res.json(tasks);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/taskmanager/add', verifyToken, async (req, res) => {
+  const { title, description, due_date } = req.body;
+  try {
+    const id = await taskService.createTask(req.user.id, title, description, due_date);
+    res.json({ success: true, id });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.put('/taskmanager/edit/:id', verifyToken, async (req, res) => {
+  const { id } = req.params;
+  const { title, description, due_date } = req.body;
+  try {
+    await taskService.updateTask(id, req.user.id, title, description, due_date);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/taskmanager/delete/:id', verifyToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    await taskService.deleteTask(id, req.user.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// ==================== 檔案管理 ====================
+app.get('/filemanager', verifyToken, async (req, res) => {
+  try {
+    const files = await fileService.getFilesByUserId(req.user.id) || [];
+    res.render('filemanager', {
+      files: files,
+      error: null
+    });
+  } catch (err) {
+    console.error('載入 filemanager 失敗:', err.message);
+    res.render('filemanager', {
+      files: [],
+      error: '載入檔案管理失敗，請稍後再試'
+    });
+  }
+});
+
+app.get('/filemanager/files', verifyToken, async (req, res) => {
+  try {
+    const files = await fileService.getFilesByUserId(req.user.id) || [];
+    res.json(files);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/filemanager/upload', verifyToken, upload.single('file'), async (req, res) => {
+  try {
+    const { customName, description } = req.body;
+    const file = req.file;
+    const fileId = await fileService.createFile(
+      req.user.id,
+      file.filename,
+      file.originalname,
+      customName,
+      description
+    );
+    res.json({ success: true, id: fileId });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.put('/filemanager/edit/:filename', verifyToken, async (req, res) => {
+  const { filename } = req.params;
+  const { customName, description } = req.body;
+  try {
+    await fileService.updateFile(filename, req.user.id, customName, description);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/filemanager/delete/:filename', verifyToken, async (req, res) => {
+  const { filename } = req.params;
+  try {
+    await fileService.deleteFile(filename, req.user.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// ==================== 記事本 ====================
+app.get('/notebook', verifyToken, async (req, res) => {
+  try {
+    const settings = await loadSiteSettings();
+    const notes = await noteService.getNotes(req.user.id) || [];
+    const tags = await noteService.getTags(req.user.id) || [];
+
+    res.render('notebook', {
+      siteSettings: settings,
+      notes: notes,        // 改：直接傳陣列
+      tags: tags,          // 改：直接傳陣列
+      error: null
+    });
+  } catch (err) {
+    console.error('載入 notebook 失敗:', err.message);
+    const settings = await loadSiteSettings().catch(() => ({}));
+    res.render('notebook', {
+      siteSettings: settings,
+      notes: [],
+      tags: [],
+      error: '載入記事本失敗，請稍後再試'
+    });
+  }
+});
+
+// ==================== 記事本 API ====================
+app.get('/notebook/notes', verifyToken, async (req, res) => {
+  const { search = '', tag = '', sort = 'updated' } = req.query;
+  try {
+    const notes = await noteService.getNotes(req.user.id, search, tag || null, sort);
+    res.json(notes);
+  } catch (err) {
+    console.error('載入筆記失敗:', err);
+    res.status(500).json({ error: '載入筆記失敗' });
+  }
+});
+
+app.post('/notebook/add', verifyToken, async (req, res) => {
+  const { title, content, tags } = req.body;
+  try {
+    const id = await noteService.createNote(req.user.id, title, content, tags);
+    res.json({ success: true, id });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.put('/notebook/edit/:id', verifyToken, async (req, res) => {
+  const { id } = req.params;
+  const { title, content, tags } = req.body;
+  try {
+    await noteService.updateNote(id, req.user.id, title, content, tags);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/notebook/pin/:id', verifyToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    await noteService.togglePin(id, req.user.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.delete('/notebook/delete/:id', verifyToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    await noteService.deleteNote(id, req.user.id);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+app.post('/notebook/share/:id', verifyToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const url = await noteService.createShareLink(id, req.user.id);
+    res.json({ success: true, url });
+  } catch (err) {
+    res.status(400).json({ success: false, error: err.message });
+  }
+});
+
+// 推送訂閱
+app.post('/subscribe', verifyToken, async (req, res) => {
+  const subscription = req.body;
+  try {
+    await subscriptionService.saveSubscription(req.user.id, subscription);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 // 登出
 app.get('/logout', async (req, res) => {
@@ -417,12 +641,11 @@ app.get('/logout', async (req, res) => {
 app.use((err, req, res, next) => {
   console.error('未處理錯誤:', err);
   logActivity(req.user?.id, '系統錯誤', err.message, req).catch(() => {});
-  res.status(500).render('error', { message: '伺服器錯誤' });
+  res.status(500).render('error', { message: '伺服器錯誤', error: err.message });
 });
 
-// 404 處理
 app.use((req, res) => {
-  res.status(404).render('error', { message: '頁面不存在' });
+  res.status(404).render('error', { message: '頁面不存在', error: null });
 });
 
 app.listen(process.env.PORT, () => {
