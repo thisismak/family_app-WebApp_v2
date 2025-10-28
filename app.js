@@ -469,43 +469,41 @@ app.delete('/taskmanager/delete/:id', verifyToken, async (req, res) => {
 // ==================== 檔案管理 ====================
 app.get('/filemanager', verifyToken, async (req, res) => {
   try {
-    const files = await fileService.getFilesByUserId(req.user.id) || [];
-    res.render('filemanager', {
-      files: files,
-      error: null
-    });
+    const files = await fileService.getFiles(req.user.id) || [];
+    res.render('filemanager', { files, error: null });
   } catch (err) {
-    console.error('載入 filemanager 失敗:', err.message);
-    res.render('filemanager', {
-      files: [],
-      error: '載入檔案管理失敗，請稍後再試'
-    });
+    console.error('載入 filemanager 失敗:', err);
+    res.render('filemanager', { files: [], error: '載入失敗' });
   }
 });
 
 app.get('/filemanager/files', verifyToken, async (req, res) => {
   try {
-    const files = await fileService.getFilesByUserId(req.user.id) || [];
+    const files = await fileService.getFiles(req.user.id) || [];
     res.json(files);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('API 載入檔案失敗:', err);
+    res.status(500).json({ error: '載入檔案失敗' });
   }
 });
 
 app.post('/filemanager/upload', verifyToken, upload.single('file'), async (req, res) => {
+  if (!req.file) return res.status(400).json({ error: '請選擇檔案' });
+
+  const { customName, description = '' } = req.body;
+  if (!customName?.trim()) return res.status(400).json({ error: '請輸入檔案名稱' });
+
   try {
-    const { customName, description } = req.body;
-    const file = req.file;
-    const fileId = await fileService.createFile(
+    await fileService.saveFile(
       req.user.id,
-      file.filename,
-      file.originalname,
-      customName,
-      description
+      req.file.filename,
+      req.file.originalname,
+      customName.trim(),
+      description.trim()
     );
-    res.json({ success: true, id: fileId });
+    res.json({ success: true });
   } catch (err) {
-    res.status(400).json({ success: false, error: err.message });
+    res.status(400).json({ error: err.message });
   }
 });
 
