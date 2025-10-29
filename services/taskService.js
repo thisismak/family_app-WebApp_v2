@@ -75,14 +75,18 @@ async function deleteTask(userId, taskId) {
 async function checkUpcomingTasks() {
   const now = moment().tz('Asia/Hong_Kong');
   const thirtyDaysAgo = now.clone().subtract(30, 'days');
-  const inOneMinute = now.clone().add(1, 'minutes');
+  const inFiveMinutes = now.clone().add(5, 'minutes');
+
+  console.log(`[DB] 查詢 ${thirtyDaysAgo.format()} ~ ${inFiveMinutes.format()}`);
+
   try {
     const results = await query(
       'SELECT t.*, ps.subscription FROM tasks t JOIN push_subscriptions ps ON t.user_id = ps.user_id WHERE t.due_date BETWEEN ? AND ? AND t.notified = FALSE',
-      [thirtyDaysAgo.format('YYYY-MM-DD HH:mm:ss'), inOneMinute.format('YYYY-MM-DD HH:mm:ss')]
+      [thirtyDaysAgo.format('YYYY-MM-DD HH:mm:ss'), inFiveMinutes.format('YYYY-MM-DD HH:mm:ss')]
     );
-    // 按任務分組，確保每個任務對應所有訂閱
-    const tasksWithSubscriptions = [];
+
+    console.log(`[DB] 查到 ${results.length} 筆任務`);
+
     const taskMap = new Map();
     results.forEach(row => {
       const taskId = row.id;
@@ -94,10 +98,12 @@ async function checkUpcomingTasks() {
       }
       taskMap.get(taskId).subscriptions.push(JSON.parse(row.subscription));
     });
-    return Array.from(taskMap.values());
+
+    const finalTasks = Array.from(taskMap.values());
+    return finalTasks; // 關鍵：一定要 return！
   } catch (err) {
-    console.error('checkUpcomingTasks 錯誤:', { error: err.message, stack: err.stack });
-    throw err;
+    console.error('checkUpcomingTasks 錯誤:', err.message);
+    return [];
   }
 }
 

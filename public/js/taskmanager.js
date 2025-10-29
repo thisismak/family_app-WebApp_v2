@@ -325,18 +325,17 @@ function editTask(id) {
 }
 
 function deleteTask(id) {
-  if (!confirm('確定要刪除此任務嗎？')) {
-    console.log('用戶取消刪除任務:', id);
-    return;
-  }
+  if (!confirm('確定要刪除此任務嗎？')) return;
+
   fetch(`/taskmanager/delete/${id}`, {
     method: 'DELETE',
-    headers: { 'Cookie': document.cookie }
+    headers: { 'Cookie': document.cookie },
+    credentials: 'include'
   })
     .then(response => {
       console.log('刪除任務響應狀態:', response.status);
       if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        return response.json().then(data => { throw new Error(data.error || response.statusText); });
       }
       return response.json();
     })
@@ -344,10 +343,9 @@ function deleteTask(id) {
       console.log('刪除任務響應數據:', data);
       if (data.success) {
         console.log('任務刪除成功:', id);
-        loadTasks();
+        loadTasks(); // 關鍵：重新載入任務列表！
       } else {
-        console.error('任務刪除失敗:', data.error);
-        alert(data.error || '刪除任務失敗');
+        throw new Error(data.error || '刪除失敗');
       }
     })
     .catch(err => {

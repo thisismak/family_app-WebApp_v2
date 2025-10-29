@@ -406,12 +406,13 @@ app.post('/dictation/save', verifyToken, async (req, res) => {
 });
 
 // ==================== 任務管理 ====================
-// 路由 1: 頁面載入
+
+// 頁面載入
 app.get('/taskmanager', verifyToken, async (req, res) => {
   try {
     const settings = await loadSiteSettings();
     const vapidKey = settings.vapid_public_key || process.env.VAPID_PUBLIC_KEY || '';
-    const tasks = await taskService.getTasks(req.user.id) || [];  // 修正
+    const tasks = await taskService.getTasks(req.user.id) || [];
     res.render('taskmanager', {
       VAPID_PUBLIC_KEY: vapidKey,
       tasks: tasks,
@@ -427,10 +428,11 @@ app.get('/taskmanager', verifyToken, async (req, res) => {
   }
 });
 
-// 路由 2: API 取得任務
+// API: 取得任務
 app.get('/taskmanager/tasks', verifyToken, async (req, res) => {
   try {
-    const tasks = await taskService.getTasks(req.user.id) || [];  // 修正
+    const tasks = await taskService.getTasks(req.user.id) || [];
+    res.set('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.json(tasks);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -441,7 +443,8 @@ app.get('/taskmanager/tasks', verifyToken, async (req, res) => {
 app.post('/taskmanager/add', verifyToken, async (req, res) => {
   const { title, description, due_date } = req.body;
   try {
-    const id = await taskService.addTask(req.user.id, title, description, due_date);  // 修正
+    const id = await taskService.addTask(req.user.id, title, description, due_date);
+    res.set('Cache-Control', 'no-cache');
     res.json({ success: true, id });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -453,17 +456,20 @@ app.put('/taskmanager/edit/:id', verifyToken, async (req, res) => {
   const { id } = req.params;
   const { title, description, due_date } = req.body;
   try {
-    await taskService.editTask(req.user.id, id, title, description, due_date);  // 修正
+    await taskService.editTask(req.user.id, id, title, description, due_date);
+    res.set('Cache-Control', 'no-cache');
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
   }
 });
 
+// 刪除任務
 app.delete('/taskmanager/delete/:id', verifyToken, async (req, res) => {
   const { id } = req.params;
   try {
     await taskService.deleteTask(id, req.user.id);
+    res.set('Cache-Control', 'no-cache');
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -649,6 +655,31 @@ app.use((err, req, res, next) => {
 app.use((req, res) => {
   res.status(404).render('error', { message: '頁面不存在', error: null });
 });
+
+// === 簡易推播排程器（每30秒檢查一次）===
+setInterval(async () => {
+  console.log('[PUSH] 排程器啟動，檢查即將到期任務...'); // 加這行
+  try {
+    const tasks = await taskService.checkUpcomingTasks();
+    console.log(`[PUSH] 找到 ${tasks.length} 筆即將到期任務`); // 加這行
+
+    for (const task of tasks) {
+      const sub = JSON.parse(task.subscription);
+      const payload = JSON.stringify({
+        title: '任務提醒',
+        body: `${task.title} 即將到期！`,
+        url: '/taskmanager'
+      });
+      console.log(`[PUSH] 發送給 user ${task.user_id}, task ${task.id}`); // 加這行
+      await webpush.sendNotification(sub, payload);
+      await taskService.markTaskAsNotified(task.id);
+    }
+  } catch (err) {
+    console.error('[PUSH] 錯誤:', err.message); // 加這行
+  }
+}, 30000);
+
+console.log('[PUSH] 排程器已啟動，每 30 秒檢查一次');
 
 app.listen(process.env.PORT, () => {
   console.log(`Server running on port ${process.env.PORT}`);
