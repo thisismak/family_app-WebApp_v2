@@ -1,22 +1,24 @@
 const { query } = require('../db');
 
+// services/subscriptionService.js
+
 async function saveSubscription(userId, subscription) {
   if (!subscription || !subscription.endpoint) {
     console.error('無效的訂閱物件:', { userId, subscription });
     throw new Error('無效的推送訂閱數據');
   }
-  const existing = await query('SELECT * FROM push_subscriptions WHERE user_id = ? AND JSON_EXTRACT(subscription, "$.endpoint") = ?', [userId, subscription.endpoint]);
-  if (!Array.isArray(existing)) {
-    console.error('查詢結果無效:', { userId, existing });
-    throw new Error('查詢訂閱記錄失敗');
-  }
-  if (existing.length > 0) {
-    console.log('訂閱已存在，跳過保存:', userId, subscription.endpoint);
-    return;
-  }
-  await query('INSERT INTO push_subscriptions (user_id, subscription) VALUES (?, ?)',
-    [userId, JSON.stringify(subscription)]);
-  console.log('推送訂閱新增成功:', userId, subscription.endpoint);
+
+  // 【刪除這整段檢查】不再跳過「已存在」
+  // const existing = await query('SELECT * FROM push_subscriptions WHERE user_id = ? AND JSON_EXTRACT(subscription, "$.endpoint") = ?', [userId, subscription.endpoint]);
+  // if (!Array.isArray(existing)) { ... }
+  // if (existing.length > 0) { ... return; }
+
+  // 直接插入（允許多設備）
+  await query(
+    'INSERT INTO push_subscriptions (user_id, subscription) VALUES (?, ?)',
+    [userId, JSON.stringify(subscription)]
+  );
+  console.log('新設備訂閱已儲存:', userId, subscription.endpoint);
 }
 
 async function getSubscription(userId) {

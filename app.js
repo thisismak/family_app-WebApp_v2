@@ -348,7 +348,7 @@ app.get('/admin/backup', verifyToken, verifyAdmin, (req, res) => {
   const cmd = `mysqldump -u ${process.env.DB_USER} -p${process.env.DB_PASSWORD} ${process.env.DB_NAME} > ${file}`;
   execPromise(cmd)
     .then(() => {
-      res.download(file, () => fs.unlink(file).catch(() => {}));
+      res.download(file, () => fs.unlink(file).catch(() => { }));
     })
     .catch(err => {
       res.status(500).send('備份失敗：' + err.message);
@@ -657,7 +657,7 @@ app.get('/logout', async (req, res) => {
 
 app.use((err, req, res, next) => {
   console.error('未處理錯誤:', err);
-  logActivity(req.user?.id, '系統錯誤', err.message, req).catch(() => {});
+  logActivity(req.user?.id, '系統錯誤', err.message, req).catch(() => { });
   res.status(500).render('error', { message: '伺服器錯誤', error: err.message });
 });
 
@@ -667,24 +667,38 @@ app.use((req, res) => {
 
 // === 簡易推播排程器（每30秒檢查一次）===
 setInterval(async () => {
-  console.log('[PUSH] 排程器啟動，檢查即將到期任務...'); // 加這行
+  console.log('[PUSH] 排程器啟動，檢查即將到期任務...');
   try {
     const tasks = await taskService.checkUpcomingTasks();
-    console.log(`[PUSH] 找到 ${tasks.length} 筆即將到期任務`); // 加這行
+    console.log(`[PUSH] 找到 ${tasks.length} 筆即將到期任務`);
 
     for (const task of tasks) {
-      const sub = JSON.parse(task.subscription);
+      const subscriptions = task.subscriptions || [];
+
       const payload = JSON.stringify({
         title: '任務提醒',
         body: `${task.title} 即將到期！`,
         url: '/taskmanager'
       });
-      console.log(`[PUSH] 發送給 user ${task.user_id}, task ${task.id}`); // 加這行
-      await webpush.sendNotification(sub, payload);
+
+      for (const sub of subscriptions) {
+        try {
+          await webpush.sendNotification(sub, payload);
+          console.log(`[PUSH] 發送成功: user ${task.user_id}, task ${task.id}, endpoint: ${sub.endpoint.substring(0, 50)}...`);
+        } catch (err) {
+          if (err.statusCode === 410 || err.statusCode === 404) {
+            await query('DELETE FROM push_subscriptions WHERE JSON_EXTRACT(subscription, "$.endpoint") = ?', [sub.endpoint]);
+            console.log(`[PUSH] 訂閱過期已刪除: ${sub.endpoint.substring(0, 50)}...`);
+          } else {
+            console.error('[PUSH] 發送失敗:', err.message);
+          }
+        }
+      }
+
       await taskService.markTaskAsNotified(task.id);
     }
   } catch (err) {
-    console.error('[PUSH] 錯誤:', err.message); // 加這行
+    console.error('[PUSH] 錯誤:', err.message);
   }
 }, 30000);
 

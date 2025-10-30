@@ -89,42 +89,37 @@ async function deleteTask(userId, taskId) {
   }
 }
 
+// services/taskService.js
 async function checkUpcomingTasks() {
   const now = moment().tz('Asia/Hong_Kong');
   const thirtyDaysAgo = now.clone().subtract(30, 'days');
 
-  console.log(`[DB] 查詢 ${thirtyDaysAgo.format()} ~ ${now.format()} 的到期任務`);
+  const results = await query(
+    `SELECT t.id, t.title, t.due_date, t.user_id, ps.subscription
+     FROM tasks t 
+     JOIN push_subscriptions ps ON t.user_id = ps.user_id 
+     WHERE t.due_date BETWEEN ? AND ? 
+       AND t.notified = FALSE`,
+    [thirtyDaysAgo.format('YYYY-MM-DD HH:mm:ss'), now.format('YYYY-MM-DD HH:mm:ss')]
+  );
 
-  try {
-    const results = await query(
-      `SELECT t.*, ps.subscription 
-       FROM tasks t 
-       JOIN push_subscriptions ps ON t.user_id = ps.user_id 
-       WHERE t.due_date BETWEEN ? AND ? 
-         AND t.notified = FALSE`,
-      [thirtyDaysAgo.format('YYYY-MM-DD HH:mm:ss'), now.format('YYYY-MM-DD HH:mm:ss')]
-    );
-
-    console.log(`[DB] 查到 ${results.length} 筆任務`);
-
-    const taskMap = new Map();
-    results.forEach(row => {
-      const taskId = row.id;
-      if (!taskMap.has(taskId)) {
-        taskMap.set(taskId, {
-          ...row,
-          subscriptions: []
-        });
-      }
-      taskMap.get(taskId).subscriptions.push(JSON.parse(row.subscription));
-    });
-
-    const finalTasks = Array.from(taskMap.values());
-    return finalTasks;
-  } catch (err) {
-    console.error('checkUpcomingTasks 錯誤:', err.message);
-    return [];
+  // 群組：每個 task 收集所有 subscriptions
+  const taskMap = {};
+  for (const row of results) {
+    const taskId = row.id;
+    if (!taskMap[taskId]) {
+      taskMap[taskId] = {
+        id: row.id,
+        title: row.title,
+        due_date: row.due_date,
+        user_id: row.user_id,
+        subscriptions: []
+      };
+    }
+    taskMap[taskId].subscriptions.push(JSON.parse(row.subscription));
   }
+
+  return Object.values(taskMap);
 }
 
 async function markTaskAsNotified(taskId) {
