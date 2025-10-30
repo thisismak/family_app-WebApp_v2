@@ -466,12 +466,21 @@ app.put('/taskmanager/edit/:id', verifyToken, async (req, res) => {
 
 // 刪除任務
 app.delete('/taskmanager/delete/:id', verifyToken, async (req, res) => {
-  const { id } = req.params;
+  const taskId = Number(req.params.id);        // 強制轉數字
+  const userId = Number(req.user.id);          // 強制轉數字
+
+  if (!taskId || !userId) {
+    return res.status(400).json({ success: false, error: '無效的 ID' });
+  }
+
+  console.log('[DELETE] 請求刪除任務:', { taskId, userId });
+
   try {
-    await taskService.deleteTask(id, req.user.id);
-    res.set('Cache-Control', 'no-cache');
+    await taskService.deleteTask(userId, taskId);
+    console.log('[DELETE] 刪除成功:', taskId);
     res.json({ success: true });
   } catch (err) {
+    console.error('[DELETE] 刪除失敗:', err.message);
     res.status(400).json({ success: false, error: err.message });
   }
 });

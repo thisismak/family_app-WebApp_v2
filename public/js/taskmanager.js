@@ -163,10 +163,7 @@ function loadTasks() {
 
 function displayTaskList() {
   const taskList = document.getElementById('taskList');
-  if (!taskList) {
-    console.error('任務列表元素未找到');
-    return;
-  }
+  if (!taskList) return;
   taskList.innerHTML = '';
   if (!Array.isArray(tasks) || tasks.length === 0) {
     const li = document.createElement('li');
@@ -179,15 +176,19 @@ function displayTaskList() {
     const li = document.createElement('li');
     li.className = 'list-group-item d-flex justify-content-between align-items-center';
     li.innerHTML = `
-           <div>
-             <strong>${escapeHtml(String(task.title || ''))}</strong> - ${escapeHtml(String(task.description || '無描述'))} (到期: ${formatDisplayDateTime(task.due_date)})
-           </div>
-           <div>
-             <button class="btn btn-sm btn-warning mx-1" onclick="editTask(${task.id})">編輯</button>
-             <button class="btn btn-sm btn-danger" onclick="deleteTask(${task.id})">刪除</button>
-           </div>
-         `;
+      <div>
+        <strong>${escapeHtml(String(task.title || ''))}</strong> - ${escapeHtml(String(task.description || '無描述'))} (到期: ${formatDisplayDateTime(task.due_date)})
+      </div>
+      <div>
+        <button class="btn btn-sm btn-warning mx-1 edit-btn" data-id="${task.id}">編輯</button>
+        <button class="btn btn-sm btn-danger delete-btn" data-id="${task.id}">刪除</button>
+      </div>
+    `;
     taskList.appendChild(li);
+
+    // 關鍵：動態綁定事件
+    li.querySelector('.delete-btn').addEventListener('click', () => deleteTask(task.id));
+    li.querySelector('.edit-btn').addEventListener('click', () => editTask(task.id));
   });
 }
 

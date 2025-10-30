@@ -63,11 +63,28 @@ async function editTask(userId, taskId, title, description, dueDate) {
 }
 
 async function deleteTask(userId, taskId) {
+  const uid = Number(userId);
+  const tid = Number(taskId);
+
+  if (!uid || !tid) {
+    throw new Error('無效的 userId 或 taskId');
+  }
+
+  console.log('[DB] 執行刪除任務:', { userId: uid, taskId: tid });
+
   try {
-    await query('DELETE FROM tasks WHERE id = ? AND user_id = ?', [taskId, userId]);
-    console.log('任務刪除成功:', taskId);
+    const result = await query(
+      'DELETE FROM tasks WHERE id = ? AND user_id = ?',
+      [tid, uid]
+    );
+
+    console.log('[DB] 刪除影響行數:', result.affectedRows);
+
+    if (result.affectedRows === 0) {
+      throw new Error('任務不存在或無權刪除');
+    }
   } catch (err) {
-    console.error('deleteTask 錯誤:', { userId, taskId, error: err.message, stack: err.stack });
+    console.error('deleteTask 錯誤:', { userId: uid, taskId: tid, error: err.message });
     throw err;
   }
 }
@@ -100,7 +117,7 @@ async function checkUpcomingTasks() {
     });
 
     const finalTasks = Array.from(taskMap.values());
-    return finalTasks; // 關鍵：一定要 return！
+    return finalTasks;
   } catch (err) {
     console.error('checkUpcomingTasks 錯誤:', err.message);
     return [];
