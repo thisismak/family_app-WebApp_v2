@@ -92,14 +92,17 @@ async function deleteTask(userId, taskId) {
 async function checkUpcomingTasks() {
   const now = moment().tz('Asia/Hong_Kong');
   const thirtyDaysAgo = now.clone().subtract(30, 'days');
-  const inFiveMinutes = now.clone().add(5, 'minutes');
 
-  console.log(`[DB] 查詢 ${thirtyDaysAgo.format()} ~ ${inFiveMinutes.format()}`);
+  console.log(`[DB] 查詢 ${thirtyDaysAgo.format()} ~ ${now.format()} 的到期任務`);
 
   try {
     const results = await query(
-      'SELECT t.*, ps.subscription FROM tasks t JOIN push_subscriptions ps ON t.user_id = ps.user_id WHERE t.due_date BETWEEN ? AND ? AND t.notified = FALSE',
-      [thirtyDaysAgo.format('YYYY-MM-DD HH:mm:ss'), inFiveMinutes.format('YYYY-MM-DD HH:mm:ss')]
+      `SELECT t.*, ps.subscription 
+       FROM tasks t 
+       JOIN push_subscriptions ps ON t.user_id = ps.user_id 
+       WHERE t.due_date BETWEEN ? AND ? 
+         AND t.notified = FALSE`,
+      [thirtyDaysAgo.format('YYYY-MM-DD HH:mm:ss'), now.format('YYYY-MM-DD HH:mm:ss')]
     );
 
     console.log(`[DB] 查到 ${results.length} 筆任務`);
