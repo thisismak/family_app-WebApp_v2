@@ -1,4 +1,4 @@
-const PRECACHE = 'precache-v5';
+const PRECACHE = 'precache-v6';
 const PRECACHE_URLS = [
   '/',
   '/css/style.css',
@@ -17,104 +17,97 @@ self.addEventListener('install', event => {
   console.log('Service Worker 安裝中');
   event.waitUntil(
     caches.open(PRECACHE)
-      .then(cache => {
-        console.log('預快取資源:', PRECACHE_URLS);
-        return cache.addAll(PRECACHE_URLS);
-      })
+      .then(cache => cache.addAll(PRECACHE_URLS))
       .then(() => self.skipWaiting())
-      .catch(err => console.error('預快取失敗:', err))
   );
 });
 
 self.addEventListener('activate', event => {
   console.log('Service Worker 啟動中');
-  const currentCaches = [PRECACHE];
   event.waitUntil(
     caches.keys()
-      .then(cacheNames => cacheNames.filter(cacheName => !currentCaches.includes(cacheName)))
-      .then(cachesToDelete => Promise.all(
-        cachesToDelete.map(cacheToDelete => {
-          console.log('刪除舊快取:', cacheToDelete);
-          return caches.delete(cacheToDelete);
-        })
-      ))
+      .then(cacheNames => cacheNames.filter(name => name !== PRECACHE))
+      .then(oldCaches => Promise.all(oldCaches.map(cache => caches.delete(cache))))
       .then(() => self.clients.claim())
-      .catch(err => console.error('啟動清理失敗:', err))
   );
 });
 
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
-  if (!url.protocol.startsWith('http')) {
-    console.log('跳過非 HTTP 請求:', url.href);
-    return;
-  }
+
+  // 跳過非 HTTP
+  if (!url.protocol.startsWith('http')) return;
+
+  // 上傳資料夾：network only
   if (url.pathname.startsWith('/uploads/')) {
-    console.log('動態檔案請求，使用 network-only:', url.pathname);
+    console.log('上傳檔案，network-only:', url.pathname);
     event.respondWith(fetch(event.request));
     return;
   }
-  if (PRECACHE_URLS.includes(url.pathname) || PRECACHE_URLS.includes(url.href)) {
-    console.log('從快取提供靜態資源:', url.href);
+
+  // 強制不快取：筆記 API
+  if (
+    url.pathname.startsWith('/notebook/notes') ||
+    /^\/notebook\/edit\/\d+$/.test(url.pathname)
+  ) {
+    console.log('強制 network + no-cache:', url.pathname);
     event.respondWith(
-      caches.match(event.request)
-        .then(cachedResponse => {
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          console.log('從網絡獲取靜態資源:', url.href);
-          return fetch(event.request);
-        })
-        .catch(err => {
-          console.error('靜態資源快取失敗:', url.href, err);
-          return caches.match('/offline.html')
-            .then(offlineResponse => {
-              if (offlineResponse) {
-                console.log('提供離線頁面:', url.href);
-                return offlineResponse;
-              }
-              throw new Error('無離線頁面可用');
-            });
-        })
+      fetch(event.request, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache'
+        }
+      }).catch(() => caches.match('/offline.html') || new Response('Offline', { status: 503 }))
     );
-  } else {
-    console.log('動態請求，使用 network-only:', url.pathname);
-    event.respondWith(fetch(event.request));
+    return;
   }
+
+  // 靜態資源：cache-first + 背景更新快取
+  if (PRECACHE_URLS.includes(url.pathname) || PRECACHE_URLS.includes(url.href)) {
+    console.log('靜態資源，cache-first:', url.href);
+    event.respondWith(
+      caches.match(event.request).then(cached => {
+        // 背景更新快取
+        const fetchPromise = fetch(event.request).then(response => {
+          if (response && response.status === 200) {
+            caches.open(PRECACHE).then(cache => cache.put(event.request, response.clone()));
+          }
+          return response;
+        }).catch(() => cached || caches.match('/offline.html'));
+
+        return cached || fetchPromise;
+      }).catch(() => caches.match('/offline.html'))
+    );
+    return;
+  }
+
+  // 其他動態請求：network only
+  console.log('其他動態請求，network-only:', url.pathname);
+  event.respondWith(fetch(event.request));
 });
 
+// Push 通知
 self.addEventListener('push', event => {
-  console.log('收到推送通知:', event.data?.text() || '無數據');
-  const data = event.data ? JSON.parse(event.data.text()) : { title: '通知', body: '您有新通知！', url: '/' };
-  const options = {
-    body: data.body,
-    icon: data.icon || '/images/icon-192x192.png',
-    badge: '/images/icon-192x192.png',
-    data: { url: data.url }
-  };
+  const data = event.data ? event.data.json() : { title: '通知', body: '您有新消息', url: '/' };
   event.waitUntil(
-    self.registration.showNotification(data.title || '通知', options)
-      .catch(err => console.error('顯示通知失敗:', err))
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: '/images/icon-192x192.png',
+      data: { url: data.url }
+    })
   );
 });
 
 self.addEventListener('notificationclick', event => {
-  console.log('通知被點擊:', event.notification.title);
   event.notification.close();
+  const url = event.notification.data?.url || '/';
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true })
-      .then(clientList => {
-        const url = event.notification.data.url || '/';
-        console.log('導航到 URL:', url);
-        for (const client of clientList) {
-          if (client.url === url && 'focus' in client) {
-            return client.focus();
-          }
-        }
-        if (clients.openWindow) {
-          return clients.openWindow(url);
-        }
-      })
-      .catch(err => console.error('處理通知點擊失敗:', err))
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then(clientList => {
+      for (const client of clientList) {
+        if (client.url === url && 'focus' in client) return client.focus();
+      }
+      if (clients.openWindow) return clients.openWindow(url);
+    })
   );
 });

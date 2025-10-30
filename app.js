@@ -598,7 +598,7 @@ app.put('/notebook/edit/:id', verifyToken, async (req, res) => {
   const { id } = req.params;
   const { title, content, tags } = req.body;
   try {
-    await noteService.updateNote(id, req.user.id, title, content, tags);
+    await noteService.updateNote(req.user.id, id, title, content, tags);
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -618,7 +618,7 @@ app.post('/notebook/pin/:id', verifyToken, async (req, res) => {
 app.delete('/notebook/delete/:id', verifyToken, async (req, res) => {
   const { id } = req.params;
   try {
-    await noteService.deleteNote(id, req.user.id);
+    await noteService.deleteNote(req.user.id, id);
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
