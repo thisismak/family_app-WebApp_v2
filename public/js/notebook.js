@@ -24,7 +24,7 @@ function renderNotes() {
   const grid = document.getElementById('notes-grid');
   grid.innerHTML = notes.map(note => {
     const tags = Array.isArray(note.tags) ? note.tags : [];
-    const tagColors = Array.isArray(note.tag_colors) ? note.tag_colors : [];
+    const tagColors = Array.isArray(note.tag_colors) ? note.tag_colors : []; // 確保是陣列
     return `
       <div class="note-card ${note.is_pinned ? 'pinned' : ''}" style="border-left: 4px solid ${note.color || '#ddd'}">
         <div class="note-header">

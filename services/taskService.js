@@ -63,48 +63,63 @@ async function editTask(userId, taskId, title, description, dueDate) {
 }
 
 async function deleteTask(userId, taskId) {
+  const uid = Number(userId);
+  const tid = Number(taskId);
+
+  if (!uid || !tid) {
+    throw new Error('無效的 userId 或 taskId');
+  }
+
+  console.log('[DB] 執行刪除任務:', { userId: uid, taskId: tid });
+
   try {
-    await query('DELETE FROM tasks WHERE id = ? AND user_id = ?', [taskId, userId]);
-    console.log('任務刪除成功:', taskId);
+    const result = await query(
+      'DELETE FROM tasks WHERE id = ? AND user_id = ?',
+      [tid, uid]
+    );
+
+    console.log('[DB] 刪除影響行數:', result.affectedRows);
+
+    if (result.affectedRows === 0) {
+      throw new Error('任務不存在或無權刪除');
+    }
   } catch (err) {
-    console.error('deleteTask 錯誤:', { userId, taskId, error: err.message, stack: err.stack });
+    console.error('deleteTask 錯誤:', { userId: uid, taskId: tid, error: err.message });
     throw err;
   }
 }
 
+// services/taskService.js
 async function checkUpcomingTasks() {
   const now = moment().tz('Asia/Hong_Kong');
   const thirtyDaysAgo = now.clone().subtract(30, 'days');
-  const inFiveMinutes = now.clone().add(5, 'minutes');
 
-  console.log(`[DB] 查詢 ${thirtyDaysAgo.format()} ~ ${inFiveMinutes.format()}`);
+  const results = await query(
+    `SELECT t.id, t.title, t.due_date, t.user_id, ps.subscription
+     FROM tasks t 
+     JOIN push_subscriptions ps ON t.user_id = ps.user_id 
+     WHERE t.due_date BETWEEN ? AND ? 
+       AND t.notified = FALSE`,
+    [thirtyDaysAgo.format('YYYY-MM-DD HH:mm:ss'), now.format('YYYY-MM-DD HH:mm:ss')]
+  );
 
-  try {
-    const results = await query(
-      'SELECT t.*, ps.subscription FROM tasks t JOIN push_subscriptions ps ON t.user_id = ps.user_id WHERE t.due_date BETWEEN ? AND ? AND t.notified = FALSE',
-      [thirtyDaysAgo.format('YYYY-MM-DD HH:mm:ss'), inFiveMinutes.format('YYYY-MM-DD HH:mm:ss')]
-    );
-
-    console.log(`[DB] 查到 ${results.length} 筆任務`);
-
-    const taskMap = new Map();
-    results.forEach(row => {
-      const taskId = row.id;
-      if (!taskMap.has(taskId)) {
-        taskMap.set(taskId, {
-          ...row,
-          subscriptions: []
-        });
-      }
-      taskMap.get(taskId).subscriptions.push(JSON.parse(row.subscription));
-    });
-
-    const finalTasks = Array.from(taskMap.values());
-    return finalTasks; // 關鍵：一定要 return！
-  } catch (err) {
-    console.error('checkUpcomingTasks 錯誤:', err.message);
-    return [];
+  // 群組：每個 task 收集所有 subscriptions
+  const taskMap = {};
+  for (const row of results) {
+    const taskId = row.id;
+    if (!taskMap[taskId]) {
+      taskMap[taskId] = {
+        id: row.id,
+        title: row.title,
+        due_date: row.due_date,
+        user_id: row.user_id,
+        subscriptions: []
+      };
+    }
+    taskMap[taskId].subscriptions.push(JSON.parse(row.subscription));
   }
+
+  return Object.values(taskMap);
 }
 
 async function markTaskAsNotified(taskId) {

@@ -348,7 +348,7 @@ app.get('/admin/backup', verifyToken, verifyAdmin, (req, res) => {
   const cmd = `mysqldump -u ${process.env.DB_USER} -p${process.env.DB_PASSWORD} ${process.env.DB_NAME} > ${file}`;
   execPromise(cmd)
     .then(() => {
-      res.download(file, () => fs.unlink(file).catch(() => {}));
+      res.download(file, () => fs.unlink(file).catch(() => { }));
     })
     .catch(err => {
       res.status(500).send('備份失敗：' + err.message);
@@ -466,12 +466,21 @@ app.put('/taskmanager/edit/:id', verifyToken, async (req, res) => {
 
 // 刪除任務
 app.delete('/taskmanager/delete/:id', verifyToken, async (req, res) => {
-  const { id } = req.params;
+  const taskId = Number(req.params.id);        // 強制轉數字
+  const userId = Number(req.user.id);          // 強制轉數字
+
+  if (!taskId || !userId) {
+    return res.status(400).json({ success: false, error: '無效的 ID' });
+  }
+
+  console.log('[DELETE] 請求刪除任務:', { taskId, userId });
+
   try {
-    await taskService.deleteTask(id, req.user.id);
-    res.set('Cache-Control', 'no-cache');
+    await taskService.deleteTask(userId, taskId);
+    console.log('[DELETE] 刪除成功:', taskId);
     res.json({ success: true });
   } catch (err) {
+    console.error('[DELETE] 刪除失敗:', err.message);
     res.status(400).json({ success: false, error: err.message });
   }
 });
@@ -521,7 +530,7 @@ app.put('/filemanager/edit/:filename', verifyToken, async (req, res) => {
   const { filename } = req.params;
   const { customName, description } = req.body;
   try {
-    await fileService.updateFile(filename, req.user.id, customName, description);
+    await fileService.editFile(req.user.id, filename, customName, description);
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -589,7 +598,7 @@ app.put('/notebook/edit/:id', verifyToken, async (req, res) => {
   const { id } = req.params;
   const { title, content, tags } = req.body;
   try {
-    await noteService.updateNote(id, req.user.id, title, content, tags);
+    await noteService.updateNote(req.user.id, id, title, content, tags);
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -609,7 +618,7 @@ app.post('/notebook/pin/:id', verifyToken, async (req, res) => {
 app.delete('/notebook/delete/:id', verifyToken, async (req, res) => {
   const { id } = req.params;
   try {
-    await noteService.deleteNote(id, req.user.id);
+    await noteService.deleteNote(req.user.id, id);
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
@@ -648,7 +657,7 @@ app.get('/logout', async (req, res) => {
 
 app.use((err, req, res, next) => {
   console.error('未處理錯誤:', err);
-  logActivity(req.user?.id, '系統錯誤', err.message, req).catch(() => {});
+  logActivity(req.user?.id, '系統錯誤', err.message, req).catch(() => { });
   res.status(500).render('error', { message: '伺服器錯誤', error: err.message });
 });
 
@@ -658,24 +667,38 @@ app.use((req, res) => {
 
 // === 簡易推播排程器（每30秒檢查一次）===
 setInterval(async () => {
-  console.log('[PUSH] 排程器啟動，檢查即將到期任務...'); // 加這行
+  console.log('[PUSH] 排程器啟動，檢查即將到期任務...');
   try {
     const tasks = await taskService.checkUpcomingTasks();
-    console.log(`[PUSH] 找到 ${tasks.length} 筆即將到期任務`); // 加這行
+    console.log(`[PUSH] 找到 ${tasks.length} 筆即將到期任務`);
 
     for (const task of tasks) {
-      const sub = JSON.parse(task.subscription);
+      const subscriptions = task.subscriptions || [];
+
       const payload = JSON.stringify({
         title: '任務提醒',
         body: `${task.title} 即將到期！`,
         url: '/taskmanager'
       });
-      console.log(`[PUSH] 發送給 user ${task.user_id}, task ${task.id}`); // 加這行
-      await webpush.sendNotification(sub, payload);
+
+      for (const sub of subscriptions) {
+        try {
+          await webpush.sendNotification(sub, payload);
+          console.log(`[PUSH] 發送成功: user ${task.user_id}, task ${task.id}, endpoint: ${sub.endpoint.substring(0, 50)}...`);
+        } catch (err) {
+          if (err.statusCode === 410 || err.statusCode === 404) {
+            await query('DELETE FROM push_subscriptions WHERE JSON_EXTRACT(subscription, "$.endpoint") = ?', [sub.endpoint]);
+            console.log(`[PUSH] 訂閱過期已刪除: ${sub.endpoint.substring(0, 50)}...`);
+          } else {
+            console.error('[PUSH] 發送失敗:', err.message);
+          }
+        }
+      }
+
       await taskService.markTaskAsNotified(task.id);
     }
   } catch (err) {
-    console.error('[PUSH] 錯誤:', err.message); // 加這行
+    console.error('[PUSH] 錯誤:', err.message);
   }
 }, 30000);
 
