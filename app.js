@@ -530,7 +530,7 @@ app.put('/filemanager/edit/:filename', verifyToken, async (req, res) => {
   const { filename } = req.params;
   const { customName, description } = req.body;
   try {
-    await fileService.updateFile(filename, req.user.id, customName, description);
+    await fileService.editFile(req.user.id, filename, customName, description);
     res.json({ success: true });
   } catch (err) {
     res.status(400).json({ success: false, error: err.message });
