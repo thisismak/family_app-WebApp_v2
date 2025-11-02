@@ -209,13 +209,9 @@ app.get('/register', async (req, res) => {
 });
 
 app.post('/register', async (req, res) => {
-  const { username, email, password, recoveryCode } = req.body;
-  if (!recoveryCode || recoveryCode.trim().length < 3) {
-    const settings = await loadSiteSettings();
-    return res.render('register', { error: '恢復碼至少3個字元', siteSettings: settings });
-  }
+  const { username, email, password } = req.body;
   try {
-    await userService.registerUser(username, email, password, recoveryCode);
+    await userService.registerUser(username, email, password);
     await logActivity(null, '用戶註冊', `新用戶: ${username} (${email})`, req);
     res.redirect('/login');
   } catch (err) {
@@ -244,78 +240,6 @@ app.post('/login', async (req, res) => {
   } catch (err) {
     const settings = await loadSiteSettings();
     res.render('login', { error: err.message, siteSettings: settings });
-  }
-});
-
-// === 忘記密碼頁面 ===
-app.get('/forgot-password', async (req, res) => {
-  const settings = await loadSiteSettings();
-  res.render('forgot-password', { error: null, siteSettings: settings });
-});
-
-app.post('/forgot-password', async (req, res) => {
-  const { recoveryCode } = req.body;
-  try {
-    const user = await userService.getUserByRecoveryCode(recoveryCode);
-    // 產生一次性 token（5分鐘有效）
-    const resetToken = jwt.sign(
-      { id: user.id, type: 'reset' },
-      process.env.JWT_SECRET,
-      { expiresIn: '5m' }
-    );
-    res.cookie('reset_token', resetToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
-      maxAge: 5 * 60 * 1000
-    });
-    res.redirect('/reset-password');
-  } catch (err) {
-    const settings = await loadSiteSettings();
-    res.render('forgot-password', { error: err.message, siteSettings: settings });
-  }
-});
-
-// === 重置密碼頁面 ===
-app.get('/reset-password', (req, res) => {
-  const token = req.cookies.reset_token;
-  if (!token) return res.redirect('/forgot-password');
-
-  try {
-    jwt.verify(token, process.env.JWT_SECRET);
-    const settings = loadSiteSettings();
-    res.render('reset-password', { error: null, siteSettings: settings });
-  } catch (err) {
-    res.clearCookie('reset_token');
-    res.redirect('/forgot-password?error=token_expired');
-  }
-});
-
-app.post('/reset-password', async (req, res) => {
-  const token = req.cookies.reset_token;
-  if (!token) return res.redirect('/forgot-password');
-
-  const { password, confirmPassword } = req.body;
-  if (password !== confirmPassword) {
-    const settings = await loadSiteSettings();
-    return res.render('reset-password', { error: '兩次密碼不一致', siteSettings: settings });
-  }
-  if (!password || password.length < 6) {
-    const settings = await loadSiteSettings();
-    return res.render('reset-password', { error: '密碼至少6位', siteSettings: settings });
-  }
-
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (decoded.type !== 'reset') throw new Error('無效的 token');
-
-    await userService.updatePassword(decoded.id, password);
-    res.clearCookie('reset_token');
-    res.redirect('/login?success=password_reset');
-  } catch (err) {
-    res.clearCookie('reset_token');
-    const settings = await loadSiteSettings();
-    res.render('forgot-password', { error: '重置失敗，請重新操作', siteSettings: settings });
   }
 });
 

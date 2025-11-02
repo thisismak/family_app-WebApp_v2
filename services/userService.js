@@ -16,54 +16,19 @@ async function getUserById(id) {
   }
 }
 
-// 註冊時儲存 recovery_code 和 recovery_expires
-async function registerUser(username, email, password, recoveryCode) {
+async function registerUser(username, email, password) {
   try {
     const results = await query('SELECT * FROM users WHERE email = ?', [email]);
-    if (Array.isArray(results) && results.length > 0) {
+    const existing = Array.isArray(results) ? results : []; // 防護：確保 existing 是陣列
+    if (existing.length > 0) {
       throw new Error('電郵地址已被使用');
     }
     const hashedPassword = await bcrypt.hash(password, 10);
-    const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24小時後過期
-    await query(
-      'INSERT INTO users (username, email, password, role, recovery_code, recovery_expires) VALUES (?, ?, ?, ?, ?, ?)',
-      [username, email, hashedPassword, 'user', recoveryCode.trim(), expires]
-    );
+    await query('INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)',
+      [username, email, hashedPassword, 'user']);
     console.log('用戶註冊成功:', { username, email });
   } catch (err) {
-    console.error('registerUser 錯誤:', err.message);
-    throw err;
-  }
-}
-
-// 根據 recovery_code 找用戶（並檢查是否過期）
-async function getUserByRecoveryCode(code) {
-  try {
-    const results = await query(
-      'SELECT * FROM users WHERE recovery_code = ? AND recovery_expires > NOW()',
-      [code.trim()]
-    );
-    if (!results || results.length === 0) {
-      throw new Error('恢復碼無效或已過期');
-    }
-    return results[0];
-  } catch (err) {
-    console.error('getUserByRecoveryCode 錯誤:', err.message);
-    throw err;
-  }
-}
-
-// 更新密碼 + 清除 recovery_code（安全）
-async function updatePassword(userId, newPassword) {
-  try {
-    const hashed = await bcrypt.hash(newPassword, 10);
-    await query(
-      'UPDATE users SET password = ?, recovery_code = NULL, recovery_expires = NULL WHERE id = ?',
-      [hashed, userId]
-    );
-    console.log('密碼更新成功:', { userId });
-  } catch (err) {
-    console.error('updatePassword 錯誤:', err.message);
+    console.error('registerUser 錯誤:', { username, email, error: err.message });
     throw err;
   }
 }
@@ -103,12 +68,4 @@ async function getAllUsers() {
   }
 }
 
-// 全部 export！
-module.exports = {
-  registerUser,
-  loginUser,
-  getUserById,
-  getAllUsers,
-  getUserByRecoveryCode,
-  updatePassword
-};
+module.exports = { registerUser, loginUser, getUserById, getAllUsers };
