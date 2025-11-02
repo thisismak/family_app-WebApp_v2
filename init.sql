@@ -14,6 +14,15 @@ CREATE TABLE IF NOT EXISTS users (
   INDEX idx_username (username)
 );
 
+-- 新增：加入恢復碼與過期時間欄位（忘記密碼用）
+ALTER TABLE users 
+ADD COLUMN IF NOT EXISTS recovery_code VARCHAR(255) NULL COMMENT '恢復碼（一次性）',
+ADD COLUMN IF NOT EXISTS recovery_expires DATETIME NULL COMMENT '恢復碼過期時間';
+
+-- 在 init.sql 中加入（放在 users 表之後）
+ALTER TABLE users 
+ADD COLUMN IF NOT EXISTS recovery_code VARCHAR(255) NULL COMMENT '用戶設定的固定恢復碼（明碼儲存，僅供忘記密碼用）';
+
 -- 檢查並添加 role 欄位
 SET @role_exists = (
   SELECT COUNT(*)
