@@ -11,7 +11,7 @@ sudo dnf install -y mariadb-server
 sudo systemctl start mariadb
 sudo systemctl enable mariadb
 sudo mysql_secure_installation
-##Email Server安裝
+## Email Server安裝
 a. 安裝 postfix、cyrus-sasl-plain、s-nail
 sudo dnf install -y postfix cyrus-sasl-plain s-nail
 b. 啟用並啟動 Postfix
@@ -37,6 +37,9 @@ myorigin = $mydomain
 inet_interfaces = all
 inet_protocols = ipv4
 
+# === 允許本機發信 ===
+mynetworks = 127.0.0.0/8 [::1]/128
+
 # === Gmail 中繼設定 ===
 relayhost = [smtp.gmail.com]:465
 
@@ -50,6 +53,11 @@ smtp_use_tls = yes
 smtp_tls_security_level = encrypt
 smtp_tls_wrappermode = yes
 smtp_tls_CAfile = /etc/pki/tls/certs/ca-bundle.crt
+
+# === 必須新增這三行！解決 smtpd fatal 錯誤 ===
+smtpd_relay_restrictions = permit_mynetworks permit_sasl_authenticated reject_unauth_destination
+smtpd_recipient_restrictions = permit_mynetworks permit_sasl_authenticated reject_unauth_destination
+smtpd_sender_restrictions = permit_mynetworks permit_sasl_authenticated
 ```
 f. 重啟 Postfix 並測試
 sudo systemctl restart postfix

@@ -1,6 +1,6 @@
 -- 初始化資料庫結構和預設數據
 -- 適用於 internal_website 資料庫，確保與現有系統兼容
--- 版本：家庭版 - 我們的家庭空間（2025-10-28 更新）
+-- 版本：家庭版 - 我們的家庭空間（2025-11-02 更新，安全初始化）
 
 -- 創建用戶表
 CREATE TABLE IF NOT EXISTS users (
@@ -310,3 +310,41 @@ SET @sql = IF(@ua_exists = 0,
 PREPARE stmt FROM @sql;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
+
+-- ===================================================================
+-- 安全新增 users.reset_token, reset_expires, idx_reset_token（重點防呆）
+-- ===================================================================
+SET @token_exists = (
+  SELECT COUNT(*)
+  FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_NAME = 'users' AND COLUMN_NAME = 'reset_token'
+);
+SET @expires_exists = (
+  SELECT COUNT(*)
+  FROM INFORMATION_SCHEMA.COLUMNS
+  WHERE TABLE_NAME = 'users' AND COLUMN_NAME = 'reset_expires'
+);
+SET @index_exists = (
+  SELECT COUNT(*)
+  FROM INFORMATION_SCHEMA.STATISTICS
+  WHERE TABLE_SCHEMA = DATABASE()
+    AND TABLE_NAME = 'users' 
+    AND INDEX_NAME = 'idx_reset_token'
+);
+
+-- 只有在「兩個欄位都還沒加」且「索引也沒加」時才執行
+SET @sql = IF(@token_exists = 0 AND @expires_exists = 0 AND @index_exists = 0,
+  'ALTER TABLE users 
+     ADD COLUMN reset_token VARCHAR(64) NULL,
+     ADD COLUMN reset_expires DATETIME NULL,
+     ADD INDEX idx_reset_token (reset_token)',
+  'SELECT 1'
+);
+
+PREPARE stmt FROM @sql;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+-- ===================================================================
+-- 結束：所有操作皆為「可重複執行」
+-- ===================================================================

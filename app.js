@@ -1,4 +1,6 @@
 require('dotenv').config();
+const crypto = require('crypto');
+const bcrypt = require('bcrypt');
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const bodyParser = require('body-parser');
@@ -83,7 +85,7 @@ webpush.setVapidDetails(
   process.env.VAPID_PRIVATE_KEY
 );
 
-// 全局 res.locals 防護，確保 EJS 不會因 undefined 崩潰
+// 全局 res.locals 防護
 app.use((req, res, next) => {
   res.locals.user = req.user || null;
   res.locals.error = null;
@@ -181,6 +183,41 @@ const verifyAdmin = (req, res, next) => {
     });
 };
 
+// === 密碼重設 Token 管理 ===
+async function generateResetToken(email) {
+  const results = await query('SELECT id FROM users WHERE email = ?', [email]);
+  if (!results || results.length === 0) {
+    throw new Error('此電郵未註冊');
+  }
+  const userId = results[0].id;
+  const token = crypto.randomBytes(32).toString('hex');
+  const expires = new Date(Date.now() + 60 * 60 * 1000); // 1小時
+
+  await query(
+    'UPDATE users SET reset_token = ?, reset_expires = ? WHERE id = ?',
+    [token, expires, userId]
+  );
+
+  return { token, userId };
+}
+
+async function validateResetToken(token) {
+  const results = await query(
+    'SELECT id FROM users WHERE reset_token = ? AND reset_expires > NOW()',
+    [token]
+  );
+  if (!results || results.length === 0) return null;
+  return results[0].id;
+}
+
+async function updatePassword(userId, password) {
+  const hashed = await bcrypt.hash(password, 10);
+  await query(
+    'UPDATE users SET password = ?, reset_token = NULL, reset_expires = NULL WHERE id = ?',
+    [hashed, userId]
+  );
+}
+
 // ==================== 公開路由 ====================
 
 app.get('/', async (req, res) => {
@@ -242,6 +279,73 @@ app.post('/login', async (req, res) => {
     res.render('login', { error: err.message, siteSettings: settings });
   }
 });
+
+// === 刪除這一行 ===
+// const { generateResetToken, validateResetToken, updatePassword } = require('./services/userService');
+const { sendResetEmail } = require('./services/mailer');
+
+/* ---------- 忘記密碼 ---------- */
+app.get('/forgot', async (req, res) => {
+  const settings = await loadSiteSettings();
+  res.render('forgot', { error: null, success: null, siteSettings: settings });
+});
+
+app.post('/forgot', async (req, res) => {
+  const { email } = req.body;
+  try {
+    const { token } = await generateResetToken(email);
+    const resetLink = `https://www.mysandshome.com/reset/${token}`;
+    await sendResetEmail(email, resetLink);
+    const settings = await loadSiteSettings();
+    res.render('forgot', {
+      success: '重設連結已寄至您的電郵，請查收！',
+      error: null,
+      siteSettings: settings
+    });
+  } catch (err) {
+    const settings = await loadSiteSettings();
+    res.render('forgot', { error: err.message, success: null, siteSettings: settings });
+  }
+});
+
+/* ---------- 重設密碼 ---------- */
+app.get('/reset/:token', async (req, res) => {
+  const { token } = req.params;
+  const userId = await validateResetToken(token);
+  if (!userId) {
+    return res.render('error', { message: '連結無效或已過期', error: null });
+  }
+  const settings = await loadSiteSettings();
+  res.render('reset', { token, error: null, siteSettings: settings });
+});
+
+app.post('/reset/:token', async (req, res) => {
+  const { token } = req.params;
+  const { password, confirm } = req.body;
+
+  if (password !== confirm) {
+    return res.render('reset', { token, error: '兩次密碼不一致' });
+  }
+  if (password.length < 6) {
+    return res.render('reset', { token, error: '密碼至少 6 位' });
+  }
+
+  const userId = await validateResetToken(token);
+  if (!userId) {
+    return res.render('error', { message: '連結無效或已過期', error: null });
+  }
+
+  try {
+    await updatePassword(userId, password);
+    res.redirect('/login?msg=密碼已成功重設，請重新登入');
+  } catch (err) {
+    res.render('reset', { token, error: err.message });
+  }
+});
+
+// ...（後面所有路由保持不變，全部照抄）
+// 包含管理員、dashboard、taskmanager、filemanager、notebook 等全部路由
+// 以及推播、錯誤處理、listen 全部不動
 
 // ==================== 管理員後台路由 ====================
 
@@ -363,7 +467,6 @@ app.post('/admin/clear-cache', verifyToken, verifyAdmin, (req, res) => {
 
 // ==================== 其他登入後路由 ====================
 
-// Dashboard
 app.get('/dashboard', verifyToken, async (req, res) => {
   try {
     const user = await userService.getUserById(req.user.id);
@@ -381,7 +484,6 @@ app.get('/dashboard', verifyToken, async (req, res) => {
   }
 });
 
-// 生字背默
 app.get('/dictation', verifyToken, async (req, res) => {
   try {
     const wordlists = await wordlistService.getWordlists(req.user.id) || [];
@@ -405,9 +507,6 @@ app.post('/dictation/save', verifyToken, async (req, res) => {
   }
 });
 
-// ==================== 任務管理 ====================
-
-// 頁面載入
 app.get('/taskmanager', verifyToken, async (req, res) => {
   try {
     const settings = await loadSiteSettings();
@@ -428,7 +527,6 @@ app.get('/taskmanager', verifyToken, async (req, res) => {
   }
 });
 
-// API: 取得任務
 app.get('/taskmanager/tasks', verifyToken, async (req, res) => {
   try {
     const tasks = await taskService.getTasks(req.user.id) || [];
@@ -439,7 +537,6 @@ app.get('/taskmanager/tasks', verifyToken, async (req, res) => {
   }
 });
 
-// 新增任務
 app.post('/taskmanager/add', verifyToken, async (req, res) => {
   const { title, description, due_date } = req.body;
   try {
@@ -451,7 +548,6 @@ app.post('/taskmanager/add', verifyToken, async (req, res) => {
   }
 });
 
-// 編輯任務
 app.put('/taskmanager/edit/:id', verifyToken, async (req, res) => {
   const { id } = req.params;
   const { title, description, due_date } = req.body;
@@ -464,10 +560,9 @@ app.put('/taskmanager/edit/:id', verifyToken, async (req, res) => {
   }
 });
 
-// 刪除任務
 app.delete('/taskmanager/delete/:id', verifyToken, async (req, res) => {
-  const taskId = Number(req.params.id);        // 強制轉數字
-  const userId = Number(req.user.id);          // 強制轉數字
+  const taskId = Number(req.params.id);
+  const userId = Number(req.user.id);
 
   if (!taskId || !userId) {
     return res.status(400).json({ success: false, error: '無效的 ID' });
@@ -485,7 +580,6 @@ app.delete('/taskmanager/delete/:id', verifyToken, async (req, res) => {
   }
 });
 
-// ==================== 檔案管理 ====================
 app.get('/filemanager', verifyToken, async (req, res) => {
   try {
     const files = await fileService.getFiles(req.user.id) || [];
@@ -547,7 +641,6 @@ app.delete('/filemanager/delete/:filename', verifyToken, async (req, res) => {
   }
 });
 
-// ==================== 記事本 ====================
 app.get('/notebook', verifyToken, async (req, res) => {
   try {
     const settings = await loadSiteSettings();
@@ -556,8 +649,8 @@ app.get('/notebook', verifyToken, async (req, res) => {
 
     res.render('notebook', {
       siteSettings: settings,
-      notes: notes,        // 改：直接傳陣列
-      tags: tags,          // 改：直接傳陣列
+      notes: notes,
+      tags: tags,
       error: null
     });
   } catch (err) {
@@ -572,7 +665,6 @@ app.get('/notebook', verifyToken, async (req, res) => {
   }
 });
 
-// ==================== 記事本 API ====================
 app.get('/notebook/notes', verifyToken, async (req, res) => {
   const { search = '', tag = '', sort = 'updated' } = req.query;
   try {
@@ -635,7 +727,6 @@ app.post('/notebook/share/:id', verifyToken, async (req, res) => {
   }
 });
 
-// 推送訂閱
 app.post('/subscribe', verifyToken, async (req, res) => {
   const subscription = req.body;
   try {
@@ -646,14 +737,11 @@ app.post('/subscribe', verifyToken, async (req, res) => {
   }
 });
 
-// 登出
 app.get('/logout', async (req, res) => {
   await logActivity(req.user?.id, '用戶登出', `用戶ID: ${req.user?.id}`, req);
   res.clearCookie('token');
   res.redirect('/login');
 });
-
-// ==================== 全局錯誤處理 ====================
 
 app.use((err, req, res, next) => {
   console.error('未處理錯誤:', err);
@@ -665,7 +753,6 @@ app.use((req, res) => {
   res.status(404).render('error', { message: '頁面不存在', error: null });
 });
 
-// === 簡易推播排程器（每30秒檢查一次）===
 setInterval(async () => {
   console.log('[PUSH] 排程器啟動，檢查即將到期任務...');
   try {
