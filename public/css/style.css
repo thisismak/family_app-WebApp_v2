@@ -414,3 +414,15 @@ body.offline .container {
   background: var(--text-light);
   color: var(--text-dark);
 }
+
+/* 忘記密碼頁面文字輸入欄（繼承 login 樣式） */
+.login .text-input {
+  border: 2px solid var(--dark-pink);
+  box-shadow: 0 0 10px rgba(255, 138, 155, 0.7);
+}
+
+.login .text-input:focus {
+  border: 2px solid var(--dark-pink);
+  box-shadow: 0 0 12px rgba(255, 138, 155, 0.8);
+  outline: none;
+}
