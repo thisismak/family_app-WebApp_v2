@@ -11,6 +11,50 @@ sudo dnf install -y mariadb-server
 sudo systemctl start mariadb
 sudo systemctl enable mariadb
 sudo mysql_secure_installation
+##Email Server安裝
+a. 安裝 postfix、cyrus-sasl-plain、s-nail
+sudo dnf install -y postfix cyrus-sasl-plain s-nail
+b. 啟用並啟動 Postfix
+sudo systemctl enable postfix
+sudo systemctl start postfix
+sudo systemctl status postfix --no-pager
+c. 創建 SASL 密碼檔案
+cat /etc/postfix/sasl_passwd
+```
+[smtp.gmail.com]:465 testing.email111011@gmail.com:lgzrupgilrymwjpu
+```
+d. 生成 hash 資料庫並設定權限
+sudo postmap /etc/postfix/sasl_passwd
+sudo chown root:root /etc/postfix/sasl_passwd /etc/postfix/sasl_passwd.db
+sudo chmod 600 /etc/postfix/sasl_passwd /etc/postfix/sasl_passwd.db
+e. 編輯 Postfix 設定檔
+cat /etc/postfix/main.cf
+```
+# === 基本設定 ===
+myhostname = localhost.localdomain
+mydomain = localdomain
+myorigin = $mydomain
+inet_interfaces = all
+inet_protocols = ipv4
+
+# === Gmail 中繼設定 ===
+relayhost = [smtp.gmail.com]:465
+
+# === SASL 認證 ===
+smtp_sasl_auth_enable = yes
+smtp_sasl_password_maps = hash:/etc/postfix/sasl_passwd
+smtp_sasl_security_options = noanonymous
+
+# === SSL/TLS (端口 465) ===
+smtp_use_tls = yes
+smtp_tls_security_level = encrypt
+smtp_tls_wrappermode = yes
+smtp_tls_CAfile = /etc/pki/tls/certs/ca-bundle.crt
+```
+f. 重啟 Postfix 並測試
+sudo systemctl restart postfix
+g. 測試郵件
+echo "這是一封測試郵件，用於驗證 Postfix + Gmail SMTP。" | mail -s "Postfix Test" thismywing@hotmail.com
 ## 建立專案目錄
 sudo mkdir -p /opt/family-app
 cd /opt/family-app
