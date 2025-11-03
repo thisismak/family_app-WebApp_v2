@@ -31,11 +31,11 @@ function renderNotes() {
           <h3>${escapeHtml(note.title || '無標題')}</h3>
           <button class="pin-btn" data-id="${note.id}">${note.is_pinned ? 'Unpin' : 'Pin'}</button>
         </div>
-        <div class="note-preview">
-          ${(note.content || '').length > 0 
-            ? marked.parse(note.content).replace(/<[^>]*>/g, '').slice(0, 100) + '...'
-            : '<em>無內容</em>'}
-        </div>
+<div class="note-preview">
+  ${(note.content || '').length > 0
+        ? `<div class="note-preview-md">${marked.parse(note.content)}</div>`
+        : '<em>無內容</em>'}
+</div>
         <div class="note-tags">
           ${tags.map((tag, i) => `<span class="tag" style="background:${tagColors[i] || '#999'}">${escapeHtml(tag)}</span>`).join('')}
         </div>
@@ -109,7 +109,7 @@ function addTag(name) {
 
 function renderTags(tags) {
   const list = document.getElementById('tag-list');
-  list.innerHTML = (Array.isArray(tags) ? tags : []).map(t => 
+  list.innerHTML = (Array.isArray(tags) ? tags : []).map(t =>
     `<span class="tag" onclick="this.remove()">${escapeHtml(t)}</span>`
   ).join('');
 }
@@ -202,6 +202,17 @@ document.addEventListener('click', e => {
   if (e.target.classList.contains('pin-btn')) {
     togglePin(e.target.dataset.id);
   }
+});
+
+// 點擊卡片展開／收合完整 Markdown
+document.getElementById('notes-grid').addEventListener('click', function(e) {
+  const card = e.target.closest('.note-card');
+  if (!card) return;
+
+  // 避免點到按鈕也觸發
+  if (e.target.closest('button')) return;
+
+  card.classList.toggle('expanded');
 });
 
 // 頁面載入完成後執行

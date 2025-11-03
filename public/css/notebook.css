@@ -217,4 +217,49 @@
     width: 95%;
     padding: 15px;
   }
+  /* ─────── Markdown 預覽美化（專為你的粉色風格）─────── */
+.note-preview-md {
+  max-height: 90px;           /* 預設收合 3～4 行 */
+  overflow: hidden;
+  transition: max-height 0.35s ease;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #4b5563;
+}
+
+.note-preview-md table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 8px 0;
+  font-size: 0.8rem;
+}
+.note-preview-md th,
+.note-preview-md td {
+  border: 1px solid #e5e7eb;
+  padding: 4px 6px;
+  text-align: left;
+}
+.note-preview-md th {
+  background: var(--primary-pink);
+  color: var(--text-dark);
+  font-weight: 600;
+}
+.note-preview-md pre {
+  background: #f3f4f6;
+  padding: 8px;
+  border-radius: 6px;
+  overflow-x: auto;
+  font-size: 0.8rem;
+}
+.note-preview-md code {
+  background: #fee2e2;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.85em;
+}
+
+/* 點卡片展開完整內容 */
+.note-card.expanded .note-preview-md {
+  max-height: 1200px;   /* 夠高就不會被截斷 */
+}
 }
