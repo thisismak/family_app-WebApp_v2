@@ -1,7 +1,7 @@
 let currentNoteId = null;
 let notes = [];
 
-// 載入筆記（加入錯誤處理）
+// 載入筆記
 async function loadNotes() {
   const search = document.getElementById('search').value;
   const tag = document.getElementById('tag-filter').value;
@@ -19,27 +19,28 @@ async function loadNotes() {
   renderNotes();
 }
 
-// 渲染筆記卡片（防護 tags / tag_colors）
+// 渲染筆記卡片
 function renderNotes() {
   const grid = document.getElementById('notes-grid');
   grid.innerHTML = notes.map(note => {
     const tags = Array.isArray(note.tags) ? note.tags : [];
-    const tagColors = Array.isArray(note.tag_colors) ? note.tag_colors : []; // 確保是陣列
+    const tagColors = Array.isArray(note.tag_colors) ? note.tag_colors : [];
     return `
       <div class="note-card ${note.is_pinned ? 'pinned' : ''}" style="border-left: 4px solid ${note.color || '#ddd'}">
         <div class="note-header">
           <h3>${escapeHtml(note.title || '無標題')}</h3>
           <button class="pin-btn" data-id="${note.id}">${note.is_pinned ? 'Unpin' : 'Pin'}</button>
         </div>
-<div class="note-preview">
-  ${(note.content || '').length > 0
+        <div class="note-preview">
+          ${(note.content || '').length > 0
         ? `<div class="note-preview-md">${marked.parse(note.content)}</div>`
         : '<em>無內容</em>'}
-</div>
+        </div>
         <div class="note-tags">
           ${tags.map((tag, i) => `<span class="tag" style="background:${tagColors[i] || '#999'}">${escapeHtml(tag)}</span>`).join('')}
         </div>
         <div class="note-actions">
+          <button onclick="viewNote(${note.id})" style="background:#8b5cf6;color:white;">查看</button>
           <button onclick="editNote(${note.id})">編輯</button>
           <button onclick="shareNote(${note.id})">分享</button>
           <button class="delete" onclick="deleteNote(${note.id})">刪除</button>
@@ -86,7 +87,7 @@ document.getElementById('save-note').onclick = async () => {
   }
 };
 
-// 標籤輸入
+// 標籤
 document.getElementById('tag-input').addEventListener('keydown', e => {
   if (e.key === 'Enter' && e.target.value.trim()) {
     addTag(e.target.value.trim());
@@ -96,7 +97,6 @@ document.getElementById('tag-input').addEventListener('keydown', e => {
 
 function addTag(name) {
   const list = document.getElementById('tag-list');
-  // 改用 JS 判斷是否重複（取代 :contains）
   const exists = Array.from(list.querySelectorAll('.tag')).some(span => span.textContent === name);
   if (!exists && name) {
     const span = document.createElement('span');
@@ -204,22 +204,63 @@ document.addEventListener('click', e => {
   }
 });
 
-// 點擊卡片展開／收合完整 Markdown
-document.getElementById('notes-grid').addEventListener('click', function(e) {
+// 點卡片展開
+document.getElementById('notes-grid').addEventListener('click', function (e) {
   const card = e.target.closest('.note-card');
-  if (!card) return;
-
-  // 避免點到按鈕也觸發
-  if (e.target.closest('button')) return;
-
+  if (!card || e.target.closest('button')) return;
   card.classList.toggle('expanded');
 });
 
-// 頁面載入完成後執行
+// === 查看完整筆記 ===
+function viewNote(id) {
+  const note = notes.find(n => n.id === id);
+  if (!note) return alert('筆記不見了！');
+
+  document.getElementById('view-title').textContent = note.title || '無標題';
+
+  const preview = document.getElementById('view-preview');
+  preview.innerHTML = note.content
+    ? marked.parse(note.content, {
+      breaks: true,      // 支援單換行
+      gfm: true,         // GitHub 風格表格
+      headerIds: false   // 避免 ID 衝突
+    })
+    : '<em style="color:#999;">這篇筆記還沒有內容喔～</em>';
+
+  const tags = Array.isArray(note.tags) ? note.tags : [];
+  const colors = Array.isArray(note.tag_colors) ? note.tag_colors : [];
+  document.getElementById('view-tags').innerHTML = tags
+    .map((tag, i) => `<span class="tag" style="background:${colors[i] || '#999'}">${tag}</span>`)
+    .join('');
+
+  document.getElementById('view-timestamp').textContent =
+    `更新於 ${new Date(note.updated_at).toLocaleString()}`;
+
+  document.getElementById('view-modal').classList.add('show');
+}
+
+// 關閉查看
+document.getElementById('close-view').onclick = () => {
+  document.getElementById('view-modal').classList.remove('show');
+};
+
+document.getElementById('view-modal').onclick = (e) => {
+  if (e.target.id === 'view-modal') {
+    document.getElementById('view-modal').classList.remove('show');
+  }
+};
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    document.getElementById('view-modal').classList.remove('show');
+    document.getElementById('editor-modal').classList.remove('show');
+  }
+});
+
+// 頁面載入
 document.addEventListener('DOMContentLoaded', () => {
-  // 確保 marked 已載入
   if (typeof marked === 'undefined') {
-    console.warn('marked 未載入，Markdown 預覽將失效');
+    console.warn('marked 未載入');
   }
   loadNotes();
 });

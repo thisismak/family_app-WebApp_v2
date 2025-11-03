@@ -4,11 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>筆記本 - <%= siteSettings.site_title %></title>
-  <!-- 1. 先載入全站共用樣式（包含主題變數） -->
   <link rel="stylesheet" href="/css/style.css" />
-  <!-- 2. 再載入筆記本專用樣式（可覆蓋 style.css） -->
   <link rel="stylesheet" href="/css/notebook.css" />
-
   <link rel="manifest" href="/manifest.json" />
 </head>
 <body>
@@ -35,7 +32,6 @@
 
     <div id="notes-grid"></div>
 
-    <!-- ★★ 新增：返回儀表板按鈕 ★★ -->
     <div class="text-center mt-4">
       <a href="/dashboard" class="btn btn-secondary">返回儀表板</a>
     </div>
@@ -59,6 +55,21 @@
         <button id="save-note">儲存</button>
         <button id="cancel-edit">取消</button>
         <button id="share-note" style="display:none">分享</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 查看完整筆記 Modal -->
+  <div id="view-modal" class="modal">
+    <div class="modal-content view-modal-content">
+      <div class="modal-header">
+        <h2 id="view-title">載入中...</h2>
+        <button id="close-view" class="close-btn">×</button>
+      </div>
+      <div class="modal-body">
+        <div id="view-preview" class="markdown"></div>
+        <div id="view-tags" class="note-tags mt-3"></div>
+        <small id="view-timestamp" class="text-muted d-block mt-3"></small>
       </div>
     </div>
   </div>

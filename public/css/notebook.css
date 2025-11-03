@@ -262,4 +262,224 @@
 .note-card.expanded .note-preview-md {
   max-height: 1200px;   /* 夠高就不會被截斷 */
 }
+/* ==================== 查看 Modal（2025 新增，取代舊版） ==================== */
+#view-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 10000; /* 高於編輯 Modal */
+  background: rgba(0, 0, 0, 0.75); /* 更暗、更聚焦（2025 趨勢） */
+  backdrop-filter: blur(8px); /* 毛玻璃效果，Obsidian 風格 */
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: fadeIn 0.25s ease-out;
+}
+
+#view-modal.show {
+  display: flex;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.view-modal-content {
+  background: var(--text-light); /* 與卡片一致 */
+  border-radius: 16px; /* 更大圓角，2025 流行 */
+  width: 95%;
+  max-width: 900px; /* 更大，適合長筆記 */
+  max-height: 95vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); /* 更立體陰影 */
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1); /* Notion 級彈性動畫 */
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+#view-title {
+  margin: 0;
+  font-size: 1.6rem; /* 更大標題 */
+  font-weight: 700;
+  color: var(--text-dark);
+  word-break: break-word;
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #9ca3af;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--dark-pink);
+}
+
+.modal-body {
+  padding: 0 24px 24px;
+}
+
+#view-preview {
+  font-size: 1.05rem; /* 閱讀舒適度最佳 */
+  line-height: 1.75; /* 2025 黃金閱讀行高 */
+  color: var(--text-dark);
+  padding: 8px 0;
+}
+
+#view-preview h1 { font-size: 1.8rem; margin: 1.5rem 0 0.75rem; }
+#view-preview h2 { font-size: 1.5rem; margin: 1.25rem 0 0.625rem; }
+#view-preview h3 { font-size: 1.25rem; margin: 1rem 0 0.5rem; }
+
+#view-preview img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 12px;
+  margin: 1rem 0;
+}
+
+#view-tags {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #f3f4f6;
+}
+
+#view-timestamp {
+  margin-top: 16px;
+  opacity: 0.7;
+}
+
+/* ==================== 加強可訪問性（2025 WCAG 2.2 強制） ==================== */
+#view-modal[role="dialog"] {
+  outline: none; /* 鍵盤焦點 */
+}
+
+#view-modal:focus-visible {
+  outline: 2px solid var(--dark-pink);
+  outline-offset: 2px;
+}
+
+/* 手機優化 */
+@media (max-width: 768px) {
+  .view-modal-content {
+    width: 100%;
+    height: 100%;
+    border-radius: 0;
+    max-height: 100vh;
+  }
+  .modal-header {
+    padding: 16px 20px 12px;
+  }
+  .modal-body {
+    padding: 0 20px 20px;
+  }
+}
+/* Markdown 超美渲染（專為「查看視窗」設計）*/
+#view-preview {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* 表格神級美化 */
+#view-preview table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+  font-size: 1rem;
+}
+
+#view-preview th {
+  background: linear-gradient(135deg, #f472b6, #ec4899);
+  color: white;
+  padding: 14px 12px;
+  text-align: center;
+  font-weight: 600;
+  font-size: 1.1rem;
+}
+
+#view-preview td {
+  padding: 12px;
+  border-bottom: 1px solid #e2e8f0;
+  background: #fdfcfd;
+}
+
+#view-preview tr:nth-child(even) td {
+  background: #faf5ff;
+}
+
+#view-preview tr:hover td {
+  background: #fde8f5;
+  transition: 0.2s;
+}
+
+/* 程式碼區塊 */
+#view-preview pre {
+  background: #1a1a1a;
+  color: #f8f8f2;
+  padding: 16px;
+  border-radius: 12px;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.95rem;
+  margin: 16px 0;
+  box-shadow: inset 0 2px 10px rgba(0,0,0,0.3);
+}
+
+/* 內聯程式碼 */
+#view-preview code {
+  background: #fce7f3;
+  color: #be185d;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 0.9em;
+}
+
+/* 列表更好看 */
+#view-preview ul, #view-preview ol {
+  padding-left: 28px;
+  margin: 12px 0;
+}
+
+#view-preview li {
+  margin: 6px 0;
+  line-height: 1.7;
+}
+
+/* 手機表格可橫向滾 */
+@media (max-width: 768px) {
+  #view-preview table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
 }
