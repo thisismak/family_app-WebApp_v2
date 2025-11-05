@@ -556,6 +556,33 @@ app.delete('/dictation/wordlist/:id', verifyToken, async (req, res) => {
   }
 });
 
+app.post('/dictation/word/:id', verifyToken, async (req, res) => {
+  const wordlistId = Number(req.params.id);
+  const { english = '', chinese = '' } = req.body;
+
+  if (!Number.isInteger(wordlistId) || wordlistId <= 0) {
+    return res.status(400).json({ success: false, error: 'invalid id' });
+  }
+  if (!english || !chinese) {
+    return res.status(400).json({ success: false, error: '請提供 english 與 chinese' });
+  }
+
+  try {
+    // 確認擁有權
+    const ownerCheck = await query('SELECT id FROM wordlists WHERE id = ? AND user_id = ?', [wordlistId, req.user.id]);
+    if (!ownerCheck || ownerCheck.length === 0) {
+      return res.status(404).json({ success: false, error: 'not found' });
+    }
+
+    const insertedId = await wordlistService.addWord(wordlistId, english.trim(), chinese.trim());
+    res.status(201).json({ success: true, id: insertedId });
+  } catch (err) {
+    console.error('/dictation/word/:id POST error:', err && err.stack ? err.stack : err);
+    const msg = err && err.message ? err.message : '新增生字失敗';
+    res.status(500).json({ success: false, error: msg });
+  }
+});
+
 app.get('/taskmanager', verifyToken, async (req, res) => {
   try {
     const settings = await loadSiteSettings();
