@@ -535,6 +535,27 @@ app.get('/dictation/words/:id', verifyToken, async (req, res) => {
   }
 });
 
+app.delete('/dictation/wordlist/:id', verifyToken, async (req, res) => {
+  const wordlistId = Number(req.params.id);
+  if (!Number.isInteger(wordlistId) || wordlistId <= 0) {
+    return res.status(400).json({ success: false, error: 'invalid id' });
+  }
+
+  try {
+    console.log(`[DEBUG] DELETE /dictation/wordlist request: user=${req.user?.id} wordlistId=${wordlistId}`);
+    const ownerCheck = await query('SELECT id FROM wordlists WHERE id = ? AND user_id = ?', [wordlistId, req.user.id]);
+    if (!ownerCheck || ownerCheck.length === 0) {
+      return res.status(404).json({ success: false, error: 'not found' });
+    }
+
+    await wordlistService.deleteWordlist(wordlistId, req.user.id);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('/dictation/wordlist/:id DELETE error:', err && err.stack ? err.stack : err);
+    res.status(500).json({ success: false, error: '刪除生字庫失敗，請稍後重試' });
+  }
+});
+
 app.get('/taskmanager', verifyToken, async (req, res) => {
   try {
     const settings = await loadSiteSettings();
