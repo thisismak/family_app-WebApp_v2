@@ -511,6 +511,30 @@ app.post('/dictation/save', verifyToken, async (req, res) => {
   }
 });
 
+// 新增：取得指定生字庫的生字（僅允許擁有者）
+app.get('/dictation/words/:id', verifyToken, async (req, res) => {
+  const wordlistId = Number(req.params.id);
+  if (!Number.isInteger(wordlistId) || wordlistId <= 0) {
+    return res.status(400).json({ error: 'invalid id' });
+  }
+
+  try {
+    console.log(`[DEBUG] /dictation/words request: user=${req.user?.id} wordlistId=${wordlistId}`);
+    // 確認屬於當前使用者
+    const ownerCheck = await query('SELECT id, user_id FROM wordlists WHERE id = ? AND user_id = ?', [wordlistId, req.user.id]);
+    console.log('[DEBUG] ownerCheck result:', ownerCheck);
+    if (!ownerCheck || ownerCheck.length === 0) {
+      return res.status(404).json({ error: 'not found' });
+    }
+
+    const words = await wordlistService.getWords(wordlistId);
+    res.json(Array.isArray(words) ? words : []);
+  } catch (err) {
+    console.error('/dictation/words/:id error:', err && err.stack ? err.stack : err);
+    res.status(500).json({ error: '載入生字失敗' });
+  }
+});
+
 app.get('/taskmanager', verifyToken, async (req, res) => {
   try {
     const settings = await loadSiteSettings();

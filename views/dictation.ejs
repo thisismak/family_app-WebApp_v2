@@ -120,10 +120,17 @@
       // 使用 AJAX 儲存生字庫
       fetch('/dictation/save', {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ wordlistName, words })
       })
-      .then(response => response.json())
+      .then(async response => {
+        const text = await response.text();
+        let data;
+        try { data = JSON.parse(text); } catch (e) { throw new Error(`Invalid JSON response: ${text}`); }
+        if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+        return data;
+      })
       .then(data => {
         if (data.success) {
           currentWordlistId = data.wordlistId;
@@ -155,8 +162,11 @@
       }
 
       // 使用 AJAX 取得生字庫中的生字
-      fetch(`/dictation/words/${wordlistId}`)
-      .then(response => response.json())
+      fetch(`/dictation/words/${wordlistId}`, { credentials: 'same-origin' })
+      .then(async res => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
       .then(data => {
         words = data;
         currentWordlistId = wordlistId;
@@ -188,9 +198,14 @@
       // 使用 AJAX 刪除生字庫
       fetch(`/dictation/wordlist/${wordlistId}`, {
         method: 'DELETE',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' }
       })
-      .then(response => response.json())
+      .then(async res => {
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+        return json;
+      })
       .then(data => {
         if (data.success) {
           const select = document.getElementById('wordlistSelect');
@@ -224,10 +239,15 @@
       // 使用 AJAX 新增單個生字
       fetch(`/dictation/word/${currentWordlistId}`, {
         method: 'POST',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ english, chinese })
       })
-      .then(response => response.json())
+      .then(async res => {
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+        return json;
+      })
       .then(data => {
         if (data.success) {
           words.push({ id: data.wordId, english, chinese });
@@ -286,10 +306,15 @@
       // 使用 AJAX 更新生字庫
       fetch(`/dictation/words/${currentWordlistId}`, {
         method: 'PUT',
+        credentials: 'same-origin',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ words })
       })
-      .then(response => response.json())
+      .then(async res => {
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+        return json;
+      })
       .then(data => {
         if (data.success) {
           alert('生字已更新！');
