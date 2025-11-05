@@ -583,6 +583,29 @@ app.post('/dictation/word/:id', verifyToken, async (req, res) => {
   }
 });
 
+app.put('/dictation/words/:id', verifyToken, async (req, res) => {
+  const wordlistId = Number(req.params.id);
+  const { words } = req.body;
+
+  if (!Number.isInteger(wordlistId) || wordlistId <= 0) {
+    return res.status(400).json({ success: false, error: 'invalid id' });
+  }
+
+  try {
+    // 確認擁有權
+    const ownerCheck = await query('SELECT id FROM wordlists WHERE id = ? AND user_id = ?', [wordlistId, req.user.id]);
+    if (!ownerCheck || ownerCheck.length === 0) {
+      return res.status(404).json({ success: false, error: 'not found' });
+    }
+
+    await wordlistService.updateWords(wordlistId, words);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('/dictation/words/:id PUT error:', err && err.stack ? err.stack : err);
+    res.status(500).json({ success: false, error: '更新生字失敗，請稍後重試' });
+  }
+});
+
 app.get('/taskmanager', verifyToken, async (req, res) => {
   try {
     const settings = await loadSiteSettings();
