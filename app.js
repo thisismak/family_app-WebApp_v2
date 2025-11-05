@@ -497,13 +497,17 @@ app.get('/dictation', verifyToken, async (req, res) => {
 app.post('/dictation/save', verifyToken, async (req, res) => {
   const { wordlistName, words } = req.body;
   if (!wordlistName || !words || !Array.isArray(words)) {
+    console.warn('/dictation/save invalid request body:', req.body);
     return res.status(400).json({ success: false, error: '請提供生字庫名稱和有效的生字列表' });
   }
   try {
     const wordlistId = await wordlistService.createWordlist(req.user.id, wordlistName, words);
     res.json({ success: true, wordlistId });
   } catch (err) {
-    res.status(500).json({ success: false, error: '儲存生字庫失敗' });
+    // 詳細記錄錯誤以利除錯
+    console.error('/dictation/save error:', err && err.stack ? err.stack : err);
+    const msg = process.env.NODE_ENV === 'production' ? '儲存生字庫失敗' : (err && err.message ? err.message : String(err));
+    res.status(500).json({ success: false, error: msg });
   }
 });
 
