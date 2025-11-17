@@ -398,6 +398,23 @@ sudo systemctl start process-monitor.service
 - [可選擇]壓力測試了解腳本運作
 stress-ng --vm 100 --vm-bytes 100% --timeout 600s --metrics-brief
 
+## 備份腳本
+``` backup_script.sh
+#!/bin/bash
+BACKUP_DIR="/opt/backup/family-app-$(date +%Y%m%d_%H%M%S)"
+mkdir -p "$BACKUP_DIR"
+cd "$BACKUP_DIR"
+
+echo "正在備份到 $BACKUP_DIR ..."
+
+tar -czf family-app-code-$(date +%Y%m%d_%H%M%S).tar.gz /opt/family-app
+mysqldump -u app_user -psam1_sql_password internal_website > db-backup-$(date +%Y%m%d_%H%M%S).sql
+cp /etc/nginx/conf.d/family-app.conf nginx-conf-backup.conf
+
+echo "手動備份完成！"
+echo "位置：$BACKUP_DIR"
+ls -lh "$BACKUP_DIR"
+```
 
 # 故障處理需知
 ## 重啟網站服務方法
