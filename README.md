@@ -67,7 +67,7 @@ echo "這是一封測試郵件，用於驗證 Postfix + Gmail SMTP。" | mail -s
 sudo mkdir -p /opt/family-app
 cd /opt/family-app
 ## 從 GitHub 克隆程式碼
-git clone https://github.com/thisismak/tools_app-WebApp_v2.git .
+git clone https://github.com/thisismak/family-app_v2.git .
 如果是私有儲存庫，新增認證：git clone https://username:token@github.com/...（使用 Personal Access Token）。
 ## 登入 MariaDB 並建立資料庫/使用者
 sudo mysql -u root -p
@@ -134,7 +134,7 @@ vi /etc/nginx/conf.d/family-app.conf
 
 ## 添加手機推送通知功能
 a. 安裝 web-push 模組
-cd /opt/tools_app-webapp
+cd /opt/family-app
 npm install web-push --save
 b. Install web-push Globally
 npm install -g web-push
@@ -420,15 +420,15 @@ ls -lh "$BACKUP_DIR"
 ## 重啟網站服務方法
 sudo truncate -s 0 /var/log/nginx/access.log
 sudo truncate -s 0 /var/log/nginx/error.log
-pm2 flush tools_app-webapp
+pm2 flush family-app
 
-pm2 restart tools_app-webapp
+pm2 restart family-app
 systemctl restart nginx
 
 ## 常用日誌
 tail -n 50 /var/log/nginx/access.log
 tail -n 50 /var/log/nginx/error.log
-pm2 log tools_app-webapp
+pm2 log family-app
 
 ## 檢查SQL內容
 mysql -u app_user -psam1_sql_password -e "SHOW DATABASES;"
@@ -445,4 +445,4 @@ Dir2file: Select Files to Export
 PS: 先安裝Export Directory to File
 
 ## 刪除不必要的備份檔
-find /opt/tools_app-webapp -type f -name "*.bak" -delete
+find /opt/family-app -type f -name "*.bak" -delete

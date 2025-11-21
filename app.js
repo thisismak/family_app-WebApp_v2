@@ -7,6 +7,7 @@ const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
 const webpush = require('web-push');
 const moment = require('moment-timezone');
+const axios = require('axios');
 const { initializeDatabase, query } = require('./db');
 const userService = require('./services/userService');
 const wordlistService = require('./services/wordlistService');
@@ -27,6 +28,14 @@ process.env.TZ = 'Asia/Hong_Kong';
 
 const app = express();
 const JWT_EXPIRES_IN = '7d';
+
+// ==================== Dify AI 配置 ====================
+const DIFY_CONFIG = {
+  BASE_URL: 'http://103.87.243.5:8080',
+  API_KEY: 'app-eKc9HxFC6HLi9zTCitmbEQEQ',
+  CHAT_ENDPOINT: '/chat-messages'
+};
+// =====================================================
 
 // 快取站點設定
 let cachedSettings = null;
@@ -77,6 +86,21 @@ app.use(express.static('public', {
   }
 }));
 app.set('view engine', 'ejs');
+
+// ==================== 新增：API Token 驗證中間件 ====================
+const verifyTokenAPI = (req, res, next) => {
+  const token = req.cookies.token;
+  if (!token) return res.status(401).json({ error: '未授權' });
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    res.status(401).json({ error: 'Token 無效' });
+  }
+};
+// ==================================================================
 
 // VAPID 設定
 webpush.setVapidDetails(
@@ -343,9 +367,74 @@ app.post('/reset/:token', async (req, res) => {
   }
 });
 
-// ...（後面所有路由保持不變，全部照抄）
-// 包含管理員、dashboard、taskmanager、filemanager、notebook 等全部路由
-// 以及推播、錯誤處理、listen 全部不動
+// ==================== AI 聊天路由 ====================
+// 聊天頁面
+app.get('/chat', verifyToken, async (req, res) => {
+  try {
+    const user = await userService.getUserById(req.user.id);
+    res.render('chat', {
+      username: user.username,
+      error: null
+    });
+  } catch (err) {
+    console.error('載入聊天頁面錯誤:', err);
+    res.redirect('/dashboard');
+  }
+});
+
+// AI 聊天 API
+app.post('/api/chat/send', verifyTokenAPI, async (req, res) => {
+  try {
+    const { message, conversation_id = null } = req.body;
+    
+    if (!message) {
+      return res.status(400).json({ error: '消息內容不能為空' });
+    }
+
+    const response = await axios.post(
+      `${DIFY_CONFIG.BASE_URL}${DIFY_CONFIG.CHAT_ENDPOINT}`,
+      {
+        inputs: {},
+        query: message,
+        response_mode: 'blocking',
+        conversation_id: conversation_id,
+        user: `user_${req.user.id}`
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${DIFY_CONFIG.API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        timeout: 30000
+      }
+    );
+
+    res.json({
+      success: true,
+      response: response.data.answer,
+      conversation_id: response.data.conversation_id
+    });
+
+  } catch (error) {
+    console.error('Dify API 錯誤:', error.response?.data || error.message);
+    res.status(500).json({ 
+      error: 'AI 服務暫時不可用，請稍後再試',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+});
+
+// 聊天歷史 API
+app.get('/api/chat/history', verifyTokenAPI, async (req, res) => {
+  try {
+    // 這裡可以實現從數據庫獲取用戶聊天歷史
+    res.json({ conversations: [] });
+  } catch (error) {
+    console.error('獲取聊天歷史錯誤:', error);
+    res.status(500).json({ error: '獲取歷史失敗' });
+  }
+});
+// ==================================================
 
 // ==================== 管理員後台路由 ====================
 
