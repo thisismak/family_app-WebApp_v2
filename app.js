@@ -29,12 +29,6 @@ process.env.TZ = 'Asia/Hong_Kong';
 const app = express();
 const JWT_EXPIRES_IN = '7d';
 
-// ==================== Dify AI 配置 ====================
-const DIFY_CONFIG = {
-  BASE_URL: 'http://103.87.243.5:8080',
-  API_KEY: 'app-eKc9HxFC6HLi9zTCitmbEQEQ',
-  CHAT_ENDPOINT: '/chat-messages'
-};
 // =====================================================
 
 // 快取站點設定
@@ -367,14 +361,15 @@ app.post('/reset/:token', async (req, res) => {
   }
 });
 
-// ==================== AI 聊天路由 ====================
-// 聊天頁面
+// ==================== AI 聊天路由（全新極簡版）===================
+
+// 主聊天頁面 - 直接渲染 iframe 版
 app.get('/chat', verifyToken, async (req, res) => {
   try {
     const user = await userService.getUserById(req.user.id);
     res.render('chat', {
       username: user.username,
-      error: null
+      role: user.role || 'user'
     });
   } catch (err) {
     console.error('載入聊天頁面錯誤:', err);
@@ -382,57 +377,29 @@ app.get('/chat', verifyToken, async (req, res) => {
   }
 });
 
-// AI 聊天 API
-app.post('/api/chat/send', verifyTokenAPI, async (req, res) => {
-  try {
-    const { message, conversation_id = null } = req.body;
-    
-    if (!message) {
-      return res.status(400).json({ error: '消息內容不能為空' });
-    }
-
-    const response = await axios.post(
-      `${DIFY_CONFIG.BASE_URL}${DIFY_CONFIG.CHAT_ENDPOINT}`,
-      {
-        inputs: {},
-        query: message,
-        response_mode: 'blocking',
-        conversation_id: conversation_id,
-        user: `user_${req.user.id}`
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${DIFY_CONFIG.API_KEY}`,
-          'Content-Type': 'application/json'
-        },
-        timeout: 30000
-      }
-    );
-
-    res.json({
-      success: true,
-      response: response.data.answer,
-      conversation_id: response.data.conversation_id
-    });
-
-  } catch (error) {
-    console.error('Dify API 錯誤:', error.response?.data || error.message);
-    res.status(500).json({ 
-      error: 'AI 服務暫時不可用，請稍後再試',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-});
-
-// 聊天歷史 API
-app.get('/api/chat/history', verifyTokenAPI, async (req, res) => {
-  try {
-    // 這裡可以實現從數據庫獲取用戶聊天歷史
-    res.json({ conversations: [] });
-  } catch (error) {
-    console.error('獲取聊天歷史錯誤:', error);
-    res.status(500).json({ error: '獲取歷史失敗' });
-  }
+// 【強烈推薦加這一條】同源代理路由 → 徹底解決跨域、Nginx 阻擋、空白頁問題
+app.get('/chatbot-frame', verifyToken, (req, res) => {
+  res.send(`
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>家庭AI助手</title>
+  <style>
+    body, html { margin:0; padding:0; height:100%; overflow:hidden; background:#f5f5f5; }
+    iframe { width:100%; height:100%; border:none; }
+  </style>
+</head>
+<body>
+  <iframe 
+    src="https://ai.mysandshome.com/chatbot/SW4ar9ViBGscTKSv" 
+    allow="microphone; camera; clipboard-write; autoplay"
+    sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-modals">
+  </iframe>
+</body>
+</html>
+  `.trim());
 });
 // ==================================================
 
