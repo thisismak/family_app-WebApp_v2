@@ -361,6 +361,22 @@ app.post('/reset/:token', async (req, res) => {
   }
 });
 
+// ==================== 簡單安全通用頁面 - 無需登入 ====================
+// 這是專屬於你和老婆的秘密頁面，只有知道連結的人才能進來
+app.get('/secret-page-1314', (req, res) => {
+  let title = req.query.title || '給最愛的你 ♥';
+  let content = req.query.content || '<p style="text-align:center;font-size:28px;color:#d32f2f;">老公錯了，請原諒我～</p><p style="text-align:center;">我永遠愛你 ♥♥♥</p>';
+
+  // 安全轉義（防止惡意程式碼，建議保留）
+  // title = title.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  // content = content.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+  res.render('secret', { 
+    pageTitle: title,
+    pageContent: content
+  });
+});
+
 // ==================== AI 聊天路由（全新極簡版）===================
 
 // 主聊天頁面 - 直接渲染 iframe 版
